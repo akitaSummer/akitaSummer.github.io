@@ -3,8 +3,8 @@ title: mini-react-redux的实现
 date: 2019-07-10 16:17:54
 tags:
 	- JavaScript
-    - Redux
-    - React
+  - Redux
+  - React
 categories: 学习笔记
 ---
 # 学习的目的
