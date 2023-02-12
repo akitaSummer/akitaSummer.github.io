@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="学习的目的Redux 是React生态中重要的组成部分。通过对redux进行mini的实现能够加深自己对于Redux的工作流程的理解。 网上广为流传的Redux流向图，可以帮助我们更好地理解Redux的工作原理。 代码实现我们的mini-redux模块将主要实现以下3个方面  createStore(reducer): 接收一个reducer函数, 返回一个store对象 combineReduc">
+<meta name="keywords" content="JavaScript,Redux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mini-redux的实现">
+<meta property="og:url" content="https://akitaSummer.github.io/2019/07/03/mini-redux的实现/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="学习的目的Redux 是React生态中重要的组成部分。通过对redux进行mini的实现能够加深自己对于Redux的工作流程的理解。 网上广为流传的Redux流向图，可以帮助我们更好地理解Redux的工作原理。 代码实现我们的mini-redux模块将主要实现以下3个方面  createStore(reducer): 接收一个reducer函数, 返回一个store对象 combineReduc">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini_redux/redux_flux.png">
+<meta property="og:updated_time" content="2023-02-12T17:56:09.456Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="mini-redux的实现">
+<meta name="twitter:description" content="学习的目的Redux 是React生态中重要的组成部分。通过对redux进行mini的实现能够加深自己对于Redux的工作流程的理解。 网上广为流传的Redux流向图，可以帮助我们更好地理解Redux的工作原理。 代码实现我们的mini-redux模块将主要实现以下3个方面  createStore(reducer): 接收一个reducer函数, 返回一个store对象 combineReduc">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/mini_redux/redux_flux.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2019/07/03/mini-redux的实现/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>mini-redux的实现 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2019/07/03/mini-redux的实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">mini-redux的实现
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-07-03 19:54:35" itemprop="dateCreated datePublished" datetime="2019-07-03T19:54:35+08:00">2019-07-03</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-02-13 01:56:09" itemprop="dateModified" datetime="2023-02-13T01:56:09+08:00">2023-02-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2019/07/03/mini-redux的实现/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2019/07/03/mini-redux的实现/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="学习的目的"><a href="#学习的目的" class="headerlink" title="学习的目的"></a>学习的目的</h1><p>Redux 是React生态中重要的组成部分。<br>通过对redux进行mini的实现能够加深自己对于Redux的工作流程的理解。<br> <img src="/image/mini_redux/redux_flux.png" alt="Redux Flux"><br>网上广为流传的Redux流向图，可以帮助我们更好地理解Redux的工作原理。</p>
+<h1 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h1><p>我们的mini-redux模块将主要实现以下3个方面</p>
+<ol>
+<li>createStore(reducer): 接收一个reducer函数, 返回一个store对象</li>
+<li>combineReducers(reducers): 接收一个包含多个reducer函数的对象, 返回一个新的reducer函数</li>
+<li>store对象<br> getState(): 得到内部管理的state对象<br> dispatch(action): 分发action, 会触发reducer调用, 返回一个新的state, 调用所有绑定的listener<br> subscribe(listen): 订阅一个state的监听器</li>
+</ol>
+<h2 id="1-createStore-reducer"><a href="#1-createStore-reducer" class="headerlink" title="1. createStore(reducer)"></a>1. createStore(reducer)</h2><p>在Redux中Store是一个大仓库,所有的state都会储存在store内部当中，而createStore则是创建它的API。<br>在调用createStore的时候，我们会传入reducer，让Store中能有管理的state对象的初始值。<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 将createStore暴露，供人调用</span></span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">createStore</span>(<span class="params">reducer</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// Store对象中储存的state</span></span><br><span class="line">    <span class="keyword">let</span> state</span><br><span class="line">    <span class="comment">// 在创建Store时需自动调用一次reducer来得到初始状态并保存</span></span><br><span class="line">    state = reducer(state, &#123;<span class="attr">type</span>: <span class="string">'@mini-redux'</span>&#125;)</span><br><span class="line">    <span class="comment">// 返回一个Store对象，内部具有getState，dispatch，subscribe三个方法可以调用，在第三部分具体实现</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">getState</span>(<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">dispatch</span>(<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">subscribe</span>(<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line">    <span class="keyword">return</span> &#123;getState, dispatch, subscribe&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="2-combineReducers-reducers"><a href="#2-combineReducers-reducers" class="headerlink" title="2. combineReducers(reducers)"></a>2. combineReducers(reducers)</h2><p>在我们制作的createStore所创建的Store只能保存一个state，当我们有多个state时，可以调用combineReducers，向其传入一个包含所有reducer的对象reducers，通过combineReducers将所有的reducer转化成为一个reducer。<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// combineReducers(reducers): 接收一个包含多个reducer函数的对象, 返回一个新的reducer函数</span></span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">combineReducers</span>(<span class="params">reducers</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 返回一个整合的reducer函数</span></span><br><span class="line">    <span class="keyword">return</span> <span class="function"><span class="keyword">function</span> (<span class="params">state=&#123;&#125;, action</span>) </span>&#123;</span><br><span class="line">        <span class="comment">// 准备一个保存所有状态的state</span></span><br><span class="line">        <span class="keyword">const</span> newState = &#123;&#125;</span><br><span class="line">        <span class="comment">// 得到所有的reducer函数名</span></span><br><span class="line">        <span class="keyword">const</span> keys = <span class="built_in">Object</span>.keys(reducers)</span><br><span class="line">        <span class="comment">// 依次调用所有的reducer函数，得到n个state，封装成对象并返回</span></span><br><span class="line">        keys.forEach(<span class="function"><span class="params">key</span> =&gt;</span> &#123;</span><br><span class="line">            <span class="comment">// 得到对应的子state</span></span><br><span class="line">            <span class="keyword">const</span> childState = state[key]</span><br><span class="line">            <span class="comment">// 得到对应的子reducer</span></span><br><span class="line">            <span class="keyword">const</span> childReducer = reducers[key]</span><br><span class="line">            <span class="comment">// 调用reducer得到新的state</span></span><br><span class="line">            <span class="keyword">const</span> newChildState = childReducer(childState, action)</span><br><span class="line">            <span class="comment">// 将新state保存到总state中</span></span><br><span class="line">            newState[key] = newChildState</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">// 所有state更新完后，返回新的state</span></span><br><span class="line">        <span class="keyword">return</span> newState</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>我们可以利用Array中的reduce函数优化上述代码<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">combineReducers2</span>(<span class="params">reducers</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="function"><span class="keyword">function</span> (<span class="params">state=&#123;&#125;, action</span>) </span>&#123; </span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">Object</span>.keys(reducers).reduce(<span class="function">(<span class="params">newState, reducerName</span>) =&gt;</span> &#123;</span><br><span class="line">      newState[reducerName] = reducers[reducerName](state[reducerName], action)</span><br><span class="line">      <span class="keyword">return</span> newState</span><br><span class="line">    &#125;, &#123;&#125;)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="3-store对象"><a href="#3-store对象" class="headerlink" title="3. store对象"></a>3. store对象</h2><p>当将state初始化完成后，接下来就需要完成Store对象中的三个函数了</p>
+<h3 id="3-1-getState"><a href="#3-1-getState" class="headerlink" title="3.1 getState"></a>3.1 getState</h3><p>getState最为简单，不需要任何参数，调用时只需要返回出当前的state状态即可<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 将createStore暴露，供人调用</span></span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">createStore</span>(<span class="params">reducer</span>) </span>&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 得到state对象</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">getState</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> state</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">return</span> &#123;getState, dispatch, subscribe&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="3-2-dispatch"><a href="#3-2-dispatch" class="headerlink" title="3.2 dispatch"></a>3.2 dispatch</h3><p>dispatch的作用是分发action, 会触发reducer调用, 返回一个新的state, 调用所有绑定的listener<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">createStore</span>(<span class="params">reducer</span>) </span>&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 内部保存listener数组，</span></span><br><span class="line">    <span class="keyword">const</span> listeners = []</span><br><span class="line">    <span class="comment">// 分发action, 会触发reducer调用, 返回一个新的state, 调用所有绑定的listener</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">dispatch</span>(<span class="params">action</span>) </span>&#123;</span><br><span class="line">        <span class="comment">// 调用reducer，得到新的state，保存</span></span><br><span class="line">        state = reducer(state, action)</span><br><span class="line">        <span class="comment">// 调用listeners中的所有回调函数，例：store.subscribe(function () &#123;ReactDOM.render(&lt;App store=&#123;store&#125;/&gt;, document.getElementById('root'))&#125;)为更新虚拟DOM</span></span><br><span class="line">        listeners.forEach(<span class="function"><span class="params">listener</span> =&gt;</span> listener())</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">return</span> &#123;getState, dispatch, subscribe&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="3-3-subscribe"><a href="#3-3-subscribe" class="headerlink" title="3.3 subscribe"></a>3.3 subscribe</h3><p>subscribe的作用是订阅一个state的监听器，当state改变时，我们的界面也可跟着相应更新<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">createStore</span>(<span class="params">reducer</span>) </span>&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 订阅一个state监听器</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">subscribe</span>(<span class="params">listener</span>)</span>&#123;</span><br><span class="line">        listeners.push(listener)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> &#123;getState, dispatch, subscribe&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h1 id="最终代码"><a href="#最终代码" class="headerlink" title="最终代码"></a>最终代码</h1><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 将createStore暴露，供人调用</span></span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">createStore</span>(<span class="params">reducer</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// Store对象中储存的state</span></span><br><span class="line">    <span class="keyword">let</span> state</span><br><span class="line">    <span class="comment">// 在创建Store时需自动调用一次reducer来得到初始状态并保存</span></span><br><span class="line">    state = reducer(state, &#123;<span class="attr">type</span>: <span class="string">'@mini-redux'</span>&#125;)</span><br><span class="line">    <span class="comment">// 返回一个Store对象，内部具有getState，dispatch，subscribe三个方法可以调用，在第三部分具体实现</span></span><br><span class="line">    <span class="comment">// 得到state对象</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">getState</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> state</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 内部保存listener数组</span></span><br><span class="line">    <span class="keyword">const</span> listeners = []</span><br><span class="line">    <span class="comment">// 分发action, 会触发reducer调用, 返回一个新的state, 调用所有绑定的listener</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">dispatch</span>(<span class="params">action</span>) </span>&#123;</span><br><span class="line">        <span class="comment">// 调用reducer，得到新的state，保存</span></span><br><span class="line">        state = reducer(state, action)</span><br><span class="line">        <span class="comment">// 调用listeners中的所有回调函数，例：store.subscribe(function () &#123;ReactDOM.render(&lt;App store=&#123;store&#125;/&gt;, document.getElementById('root'))&#125;)为更新虚拟DOM</span></span><br><span class="line">        listeners.forEach(<span class="function"><span class="params">listener</span> =&gt;</span> listener())</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 订阅一个state监听器</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">subscribe</span>(<span class="params">listener</span>)</span>&#123;</span><br><span class="line">        listeners.push(listener)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> &#123;getState, dispatch, subscribe&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// combineReducers(reducers): 接收一个包含多个reducer函数的对象, 返回一个新的reducer函数</span></span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">combineReducers</span>(<span class="params">reducers</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 返回一个整合的reducer函数</span></span><br><span class="line">    <span class="keyword">return</span> <span class="function"><span class="keyword">function</span> (<span class="params">state=&#123;&#125;, action</span>) </span>&#123;</span><br><span class="line">        <span class="comment">// 准备一个保存所有状态的state</span></span><br><span class="line">        <span class="keyword">const</span> newState = &#123;&#125;</span><br><span class="line">        <span class="comment">// 得到所有的reducer函数名</span></span><br><span class="line">        <span class="keyword">const</span> keys = <span class="built_in">Object</span>.keys(reducers)</span><br><span class="line">        <span class="comment">// 依次调用所有的reducer函数，得到n个state，封装成对象并返回</span></span><br><span class="line">        keys.forEach(<span class="function"><span class="params">key</span> =&gt;</span> &#123;</span><br><span class="line">            <span class="comment">// 得到对应的子state</span></span><br><span class="line">            <span class="keyword">const</span> childState = state[key]</span><br><span class="line">            <span class="comment">// 得到对应的子reducer</span></span><br><span class="line">            <span class="keyword">const</span> childReducer = reducers[key]</span><br><span class="line">            <span class="comment">// 调用reducer得到新的state</span></span><br><span class="line">            <span class="keyword">const</span> newChildState = childReducer(childState, action)</span><br><span class="line">            <span class="comment">// 将新state保存到总state中</span></span><br><span class="line">            newState[key] = newChildState</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">// 所有state更新完后，返回新的state</span></span><br><span class="line">        <span class="keyword">return</span> newState</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JavaScript/" rel="tag"># JavaScript</a>
+          
+            <a href="/tags/Redux/" rel="tag"># Redux</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/04/18/onmouseenter-onmouseleave与onmouseover-onmouseout事件判定/" rel="next" title="onmouseenter/onmouseleave与onmouseover/onmouseout事件判定">
+                <i class="fa fa-chevron-left"></i> onmouseenter/onmouseleave与onmouseover/onmouseout事件判定
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/07/10/mini-react-redux的实现/" rel="prev" title="mini-react-redux的实现">
+                mini-react-redux的实现 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">9</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">11</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#学习的目的"><span class="nav-number">1.</span> <span class="nav-text">学习的目的</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#代码实现"><span class="nav-number">2.</span> <span class="nav-text">代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-createStore-reducer"><span class="nav-number">2.1.</span> <span class="nav-text">1. createStore(reducer)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-combineReducers-reducers"><span class="nav-number">2.2.</span> <span class="nav-text">2. combineReducers(reducers)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-store对象"><span class="nav-number">2.3.</span> <span class="nav-text">3. store对象</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-getState"><span class="nav-number">2.3.1.</span> <span class="nav-text">3.1 getState</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-dispatch"><span class="nav-number">2.3.2.</span> <span class="nav-text">3.2 dispatch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-subscribe"><span class="nav-number">2.3.3.</span> <span class="nav-text">3.3 subscribe</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#最终代码"><span class="nav-number">3.</span> <span class="nav-text">最终代码</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
