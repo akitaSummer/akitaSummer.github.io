@@ -8,7 +8,7 @@ tags:
 categories: 学习笔记
 ---
 
-# 0. 前言
+# 前言
 
 各种语言都包含有 http 库，但是在我们真正开发的时候，我们会使用各种 web 框架，有 spring 一样大而全的框架，也有 koa 一样小而美的框架，但他们的核心其实都是一样的，帮助我们解决频繁手动处理的部分，简化我们的开发负担，提升开发体验。本次我们会实现一个简易的 gin，将会有以下功能：
 
@@ -21,7 +21,7 @@ categories: 学习笔记
  ![Gin 架构](/image/gin/471676227283_.pic.jpg)
 其中黑色的为 request，红色的为 response，整体请求的处理逻辑为： Request -> Group -> Middleware -> RouterTree -> Handler -> Middleware -> Response 接下来，我将会由大到小带你一步步的实现这个 mini 版 Gin。
 
-# 1. 最简框架
+# 最简框架
 
 我们的最简框架要求十分简单，就是能够处理请求即可。
  ![http](/image/gin/481676227283_.pic.jpg)
@@ -126,7 +126,7 @@ const akt = (requestListener?: http.RequestListener) => new Akt(requestListener)
 export default akt;
 ```
 
-# 2. 封装 Context
+# 封装 Context
 
 将`http.ResponseWriter`和`http.Request`封装成为一个 Context 会带来很多的好处，比如简化接口调用，减少用户编写大量重复的代码等等，封装之后，用户想得到的东西只需要从 ctx 中直接获取即可。
 
@@ -453,12 +453,12 @@ const akt = (requestListener?: http.RequestListener) => new Akt(requestListener)
 export default akt;
 ```
 
-# 3. 动态路由解析
+# 动态路由解析
 
 前面我们的路由使用了一个 map 进行储存，这个问题其实是非常明显的，我们并不支持类似于`/docs/:name/history`或者`/static/*filename`等形式的路由解析，这将是非常致命的。
 
 现在我们要实现如下的架构：
- ![router](/image/gin/4491676227284_.pic.jpg)
+ ![router](/image/gin/491676227284_.pic.jpg)
 对于路由的解析，我们可以使用树数据结构进行处理：
 
 我们的路由可以根据/划分成一个又一个树状节点，然后我们根据每个节点的样式，来决定判断是否正确，寻找下一个节点，最终节点的 handler 进行处理请求。
@@ -851,7 +851,7 @@ export class Context {
 }
 ```
 
-# 4. 路由分组
+# 路由分组
 
 实际业务场景中，往往一些路由需要相似的处理，比如有的路由需要鉴权，有的路由是接口路由等等。由于需要相似处理的路由往往具有相同的前缀，因此我们可以选用前缀作为路由分组的依据。
 
@@ -1065,7 +1065,7 @@ const akt = (requestListener?: http.RequestListener) => {
 export default akt;
 ```
 
-# 5. 中间件
+# 中间件
 
 距离我们最开始画的架构图现在只缺中间件了，想必用过 koa 的同学肯定都知道中间件是什么啦，我就不具体解释了，接下来我们就来实现它。
 
@@ -1304,7 +1304,7 @@ const akt = (requestListener?: http.RequestListener) => new Akt(requestListener)
 export default akt;
 ```
 
-# 6. 错误恢复
+# 错误恢复
 
 现在我们的项目已经基本完成了，但是存在一个问题，如果抛出 panic，导致我们的项目直接挂掉，因此，我们需要编写一个中间件用于处理错误恢复。
 
@@ -1509,7 +1509,7 @@ export class Akt extends RouterGroup {
 }
 ```
 
-# 7. 写在最后
+# 写在最后
 
 至此，我们已经将 Gin 比较核心的几个点进行了实现，Gin 也是小而美的框架，虽然有 14k 的代码，但是其中的测试代码达到了 9k，还有一些例如静态资源获取，模板渲染等功能，因为时间篇幅有限，我实现了一些（[静态资源获取](https://github.com/akitaSummer/akt/blob/main/akt-golang/akt/group.go)， [模板渲染](https://github.com/akitaSummer/akt/blob/main/akt-golang/akt/context.go)），但没有在文章中写出，有兴趣的同学可以去自己实现一下，感受自己编写一个框架的乐趣吧。
 
