@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="所有可以用 WebAssembly 实现的终将会用 WebAssembly 实现。  前言 WebAssembly 是一种新的编码方式，可以在现代的网络浏览器中运行 － 它是一种低级的类汇编语言，具有紧凑的二进制格式，可以接近原生的性能运行，并为诸如 C / C ++等语言提供一个编译目标，以便它们可以在 Web 上运行。它也被设计为可以与 JavaScript 共存，允许两者一起工作。  We">
+<meta name="keywords" content="Golang,Rust,WebAssembly">
+<meta property="og:type" content="article">
+<meta property="og:title" content="WebAssembly 入门">
+<meta property="og:url" content="https://akitaSummer.github.io/2021/09/24/WebAssembly 入门/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="所有可以用 WebAssembly 实现的终将会用 WebAssembly 实现。  前言 WebAssembly 是一种新的编码方式，可以在现代的网络浏览器中运行 － 它是一种低级的类汇编语言，具有紧凑的二进制格式，可以接近原生的性能运行，并为诸如 C / C ++等语言提供一个编译目标，以便它们可以在 Web 上运行。它也被设计为可以与 JavaScript 共存，允许两者一起工作。  We">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2023-02-13T12:18:02.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="WebAssembly 入门">
+<meta name="twitter:description" content="所有可以用 WebAssembly 实现的终将会用 WebAssembly 实现。  前言 WebAssembly 是一种新的编码方式，可以在现代的网络浏览器中运行 － 它是一种低级的类汇编语言，具有紧凑的二进制格式，可以接近原生的性能运行，并为诸如 C / C ++等语言提供一个编译目标，以便它们可以在 Web 上运行。它也被设计为可以与 JavaScript 共存，允许两者一起工作。  We">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2021/09/24/WebAssembly 入门/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>WebAssembly 入门 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2021/09/24/WebAssembly 入门/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">WebAssembly 入门
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2021-09-24 16:20:53" itemprop="dateCreated datePublished" datetime="2021-09-24T16:20:53+08:00">2021-09-24</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-02-13 20:18:02" itemprop="dateModified" datetime="2023-02-13T20:18:02+08:00">2023-02-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2021/09/24/WebAssembly 入门/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2021/09/24/WebAssembly 入门/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>所有可以用 WebAssembly 实现的终将会用 WebAssembly 实现。</p>
+</blockquote>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><blockquote>
+<p>WebAssembly 是一种新的编码方式，可以在现代的网络浏览器中运行 － 它是一种低级的类汇编语言，具有紧凑的二进制格式，可以接近原生的性能运行，并为诸如 C / C ++等语言提供一个编译目标，以便它们可以在 Web 上运行。它也被设计为可以与 JavaScript 共存，允许两者一起工作。</p>
+</blockquote>
+<p>WebAssembly 不是为了取代 JavaScript，而是一种补充，在对性能或是对交互体验要求高的场景有一席之地。并且其产物可以在多个环境中使用，对于我们前端来说，他可以调用 JavaScript 函数，包括对 DOM 树的操作。接下来我将用 go 和 rust 带你熟悉 WebAssembly 的使用。</p>
+<h1 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World"></a>Hello World</h1><p>首先我们先实现最简单的一个 WebAssembly，在网页中弹出 Hello World。</p>
+<h2 id="Go"><a href="#Go" class="headerlink" title="Go"></a>Go</h2><p>需要注意的是，如果你使用 vscode，需要先新建.vscode 文件夹，设置 settings.json。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="attr">"typescript.tsdk"</span>: <span class="string">"node_modules/typescript/lib"</span>,</span><br><span class="line">  <span class="attr">"go.toolsEnvVars"</span>: &#123;</span><br><span class="line">    <span class="attr">"GOOS"</span>: <span class="string">"js"</span>,</span><br><span class="line">    <span class="attr">"GOARCH"</span>: <span class="string">"wasm"</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>新建文件 main.go，使用 Go 语言内置的 syscall/js 包，调用 alert。</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.go</span></span><br><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"syscall/js"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">        alert := js.Global().Get(<span class="string">"alert"</span>)</span><br><span class="line">        alert.Invoke(<span class="string">"Hello World!"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GOOS=js GOARCH=wasm go build -o static/main.wasm</span><br></pre></td></tr></table></figure>
+<p>将其拷贝至我们的目录</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cp <span class="string">"<span class="variable">$(go env GOROOT)</span>/misc/wasm/wasm_exec.js"</span> static</span><br></pre></td></tr></table></figure>
+<p>然后我们新建 html，引入<code>static/main.wasm</code> 和 <code>static/wasm_exec.js</code>。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">"static/wasm_exec.js"</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">script</span>&gt;</span></span><br><span class="line">    const go = new Go();</span><br><span class="line">    WebAssembly.instantiateStreaming(fetch('static/main.wasm'), go.importObject).then(result =&gt;</span><br><span class="line">      go.run(result.instance),</span><br><span class="line">    );</span><br><span class="line">  <span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>最后我们起一个服务器（我这里方便起见就用），就可以看到 Hello World 了。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">parcel ./index.html</span><br></pre></td></tr></table></figure>
+<h2 id="Rust"><a href="#Rust" class="headerlink" title="Rust"></a>Rust</h2><p>rust 首先需要安装<code>wasm-pack</code>和 <code>cargo-generate</code> 。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh</span><br><span class="line"></span><br><span class="line">cargo install cargo-generate</span><br></pre></td></tr></table></figure>
+<p>然后我们通过 cargo-generate 来创建。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cargo generate --git https://github.com/rustwasm/wasm-pack-template</span><br></pre></td></tr></table></figure>
+<p>我们在 demo/src/lib.rs 下编写我们的代码。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="keyword">crate</span> wasm_bindgen;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">extern</span> &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">alert</span></span>(s: &amp;<span class="built_in">str</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen(start)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">start</span></span>() &#123;</span><br><span class="line">    alert(&amp;<span class="built_in">format!</span>(<span class="string">"Hello World!"</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编写完毕后，我们使用 wasm-pack 去构建我们的代码。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wasm-pack build</span><br></pre></td></tr></table></figure>
+<p>构建成功后会生成一个 pkg 文件夹，里面存放的我们的 wasm。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pkg/</span><br><span class="line">├── package.json</span><br><span class="line">├── README.md</span><br><span class="line">├── demo_bg.wasm</span><br><span class="line">├── demo.d.ts</span><br><span class="line">└── demo.js</span><br></pre></td></tr></table></figure>
+<p>然后我们快速起一个项目。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm init wasm-app www</span><br></pre></td></tr></table></figure>
+<p>在<code>package.json</code>中添加上</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  // ...</span><br><span class="line">  <span class="string">"dependencies"</span>: &#123;</span><br><span class="line">    <span class="string">"demo"</span>: <span class="string">"file:../pkg"</span>,</span><br><span class="line">    // ...</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>index.js</code>中引入我们刚编写的代码。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> * <span class="keyword">as</span> wasm <span class="keyword">from</span> <span class="string">'demo'</span>;</span><br><span class="line"></span><br><span class="line">wasm.greet();</span><br></pre></td></tr></table></figure>
+<h1 id="注册函数"><a href="#注册函数" class="headerlink" title="注册函数"></a>注册函数</h1><h2 id="Go-1"><a href="#Go-1" class="headerlink" title="Go"></a>Go</h2><p>刚才我们是调用了 js 中的函数，现在我们要将函数注册给 js 调用。我们以斐波那契数列为例。</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.go</span></span><br><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"syscall/js"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fib</span><span class="params">(i <span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> i == <span class="number">0</span> || i == <span class="number">1</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> fib(i<span class="number">-1</span>) + fib(i<span class="number">-2</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fibFunc</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        <span class="keyword">return</span> js.ValueOf(fib(args[<span class="number">0</span>].Int())) <span class="comment">// 结果用 js.ValueOf 包装</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">        done := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">int</span>, <span class="number">0</span>)</span><br><span class="line">        js.Global().Set(<span class="string">"fibFunc"</span>, js.FuncOf(fibFunc)) <span class="comment">// 注册函数，被调用时会起一个新子协程运行</span></span><br><span class="line">        &lt;-done <span class="comment">// 阻塞主协程</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>再度编译后，我们全局就有了”fibFunc”这个函数给我们调用了。</p>
+<h2 id="Rust-1"><a href="#Rust-1" class="headerlink" title="Rust"></a>Rust</h2><p>rust 编写相对简单，我们只需要加上 wasm_bindgen 特征即可。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="keyword">crate</span> wasm_bindgen;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::prelude::*;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">fib</span></span>(i: <span class="built_in">u32</span>) -&gt; <span class="built_in">u32</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> i &#123;</span><br><span class="line">        <span class="number">0</span> =&gt; <span class="number">0</span>,</span><br><span class="line">        <span class="number">1</span> =&gt; <span class="number">1</span>,</span><br><span class="line">        _ =&gt; fib(i - <span class="number">1</span>) + fib(i - <span class="number">2</span>),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Rust 没有注册在全局上，而是在所在的包中。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> * <span class="keyword">as</span> wasm <span class="keyword">from</span> <span class="string">'demo'</span>;</span><br><span class="line"></span><br><span class="line">wasm.fib(<span class="number">12</span>);</span><br></pre></td></tr></table></figure>
+<h1 id="操作-DOM"><a href="#操作-DOM" class="headerlink" title="操作 DOM"></a>操作 DOM</h1><h2 id="GO"><a href="#GO" class="headerlink" title="GO"></a>GO</h2><p>在全局中注册了 fib 后，我们需要触发他，我们可以直接对 dom 元素进行操作，假设我们有个如下的 html</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">input</span> <span class="attr">id</span>=<span class="string">"num"</span> <span class="attr">type</span>=<span class="string">"number"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"btn"</span>&gt;</span>Click<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">p</span> <span class="attr">id</span>=<span class="string">"ans"</span>&gt;</span>1<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>当点击 button 后进行计算。</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"strconv"</span></span><br><span class="line">        <span class="string">"syscall/js"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fib</span><span class="params">(i <span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> i == <span class="number">0</span> || i == <span class="number">1</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> fib(i<span class="number">-1</span>) + fib(i<span class="number">-2</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> (</span><br><span class="line">        document = js.Global().Get(<span class="string">"document"</span>)</span><br><span class="line">        numEle   = document.Call(<span class="string">"getElementById"</span>, <span class="string">"num"</span>)</span><br><span class="line">        ansEle   = document.Call(<span class="string">"getElementById"</span>, <span class="string">"ans"</span>)</span><br><span class="line">        btnEle   = js.Global().Get(<span class="string">"btn"</span>)</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fibFunc</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        v := numEle.Get(<span class="string">"value"</span>)</span><br><span class="line">        <span class="keyword">if</span> num, err := strconv.Atoi(v.String()); err == <span class="literal">nil</span> &#123;</span><br><span class="line">                ansEle.Set(<span class="string">"innerHTML"</span>, js.ValueOf(fib(num)))</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">        done := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">int</span>, <span class="number">0</span>)</span><br><span class="line">        btnEle.Call(<span class="string">"addEventListener"</span>, <span class="string">"click"</span>, js.FuncOf(fibFunc))</span><br><span class="line">        &lt;-done</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Rust-2"><a href="#Rust-2" class="headerlink" title="Rust"></a>Rust</h2><p>Rust 首先需要在<code>Cargo.toml</code>中添加</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[dependencies.web-sys]</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">"0.3.4"</span></span><br><span class="line"><span class="attr">features</span> = [</span><br><span class="line">    <span class="string">'Document'</span>,</span><br><span class="line">    <span class="string">'Element'</span>,</span><br><span class="line">    <span class="string">'EventTarget'</span>,</span><br><span class="line">    <span class="string">'HtmlElement'</span>,</span><br><span class="line">    <span class="string">'MouseEvent'</span>,</span><br><span class="line">    <span class="string">'Node'</span>,</span><br><span class="line">    <span class="string">'Window'</span>,</span><br><span class="line">    <span class="string">'HtmlInputElement'</span>,</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+<p>然后编写我们的代码</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="keyword">crate</span> wasm_bindgen;</span><br><span class="line"><span class="keyword">use</span> std::cell::Cell;</span><br><span class="line"><span class="keyword">use</span> std::rc::Rc;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::prelude::*;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::JsCast;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">fib</span></span>(i: <span class="built_in">u32</span>) -&gt; <span class="built_in">u32</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> i &#123;</span><br><span class="line">        <span class="number">0</span> =&gt; <span class="number">0</span>,</span><br><span class="line">        <span class="number">1</span> =&gt; <span class="number">1</span>,</span><br><span class="line">        _ =&gt; fib(i - <span class="number">1</span>) + fib(i - <span class="number">2</span>),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen(start)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() -&gt; <span class="built_in">Result</span>&lt;(), JsValue&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> document = web_sys::window().unwrap().document().unwrap();</span><br><span class="line">    <span class="keyword">let</span> numEle = document</span><br><span class="line">        .get_element_by_id(<span class="string">"num"</span>)</span><br><span class="line">        .unwrap()</span><br><span class="line">        .dyn_into::&lt;web_sys::HtmlInputElement&gt;()</span><br><span class="line">        .unwrap();</span><br><span class="line">    <span class="keyword">let</span> ansEle = document.get_element_by_id(<span class="string">"ans"</span>).unwrap();</span><br><span class="line">    <span class="keyword">let</span> btnEle = document.get_element_by_id(<span class="string">"btn"</span>).unwrap();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> clouse = Closure::wrap(<span class="built_in">Box</span>::new(<span class="keyword">move</span> |event: web_sys::MouseEvent| &#123;</span><br><span class="line">        <span class="keyword">let</span> num = numEle.value().clone().parse::&lt;<span class="built_in">u32</span>&gt;().unwrap();</span><br><span class="line">        ansEle.set_inner_html(&amp;fib(num).to_string());</span><br><span class="line">    &#125;) <span class="keyword">as</span> <span class="built_in">Box</span>&lt;<span class="keyword">dyn</span> <span class="built_in">FnMut</span>(_)&gt;);</span><br><span class="line">    btnEle.add_event_listener_with_callback(<span class="string">"click"</span>, clouse.as_ref().unchecked_ref())?;</span><br><span class="line"></span><br><span class="line">    <span class="literal">Ok</span>(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="异步"><a href="#异步" class="headerlink" title="异步"></a>异步</h1><p>在我们 js 中，回调函数是常见的场景，我们修改下 fib，支持一下回调方法</p>
+<h2 id="Go-2"><a href="#Go-2" class="headerlink" title="Go"></a>Go</h2><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"syscall/js"</span></span><br><span class="line">        <span class="string">"time"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fib</span><span class="params">(i <span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> i == <span class="number">0</span> || i == <span class="number">1</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> fib(i<span class="number">-1</span>) + fib(i<span class="number">-2</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fibFunc</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        callback := args[<span class="built_in">len</span>(args)<span class="number">-1</span>]</span><br><span class="line">        <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">                time.Sleep(<span class="number">3</span> * time.Second)</span><br><span class="line">                v := fib(args[<span class="number">0</span>].Int())</span><br><span class="line">                callback.Invoke(v)</span><br><span class="line">        &#125;()</span><br><span class="line"></span><br><span class="line">        js.Global().Get(<span class="string">"ans"</span>).Set(<span class="string">"innerHTML"</span>, <span class="string">"Waiting 3s..."</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">        done := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">int</span>, <span class="number">0</span>)</span><br><span class="line">        js.Global().Set(<span class="string">"fibFunc"</span>, js.FuncOf(fibFunc))</span><br><span class="line">        &lt;-done</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>你可能会说，都 1202 年了，谁还用回调，都是 promise，我要用 async/await</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">"fmt"</span></span><br><span class="line">    <span class="string">"syscall/js"</span></span><br><span class="line">    <span class="string">"time"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewPromise</span><span class="params">()</span> <span class="params">(p js.Value, resolve <span class="keyword">func</span>(<span class="keyword">interface</span>&#123;&#125;)</span>, <span class="title">reject</span> <span class="title">func</span><span class="params">(<span class="keyword">interface</span>&#123;&#125;)</span>)</span> &#123;</span><br><span class="line">    <span class="keyword">var</span> callback js.Func</span><br><span class="line">    callback = js.FuncOf(<span class="function"><span class="keyword">func</span><span class="params">(_ js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        <span class="keyword">defer</span> callback.Release()</span><br><span class="line"></span><br><span class="line">        resolve = <span class="function"><span class="keyword">func</span><span class="params">(value <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">            args[<span class="number">0</span>].Invoke(value)</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        reject = <span class="function"><span class="keyword">func</span><span class="params">(value <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">            args[<span class="number">1</span>].Invoke(value)</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> js.Undefined()</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    p = js.Global().Get(<span class="string">"Promise"</span>).New(callback)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Await</span><span class="params">(p js.Value)</span> <span class="params">(js.Value, error)</span></span> &#123; <span class="comment">// 用于在go中进行await</span></span><br><span class="line">    resChan := <span class="built_in">make</span>(<span class="keyword">chan</span> js.Value)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> then js.Func</span><br><span class="line"></span><br><span class="line">    then = js.FuncOf(<span class="function"><span class="keyword">func</span><span class="params">(_ js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        resChan &lt;- args[<span class="number">0</span>]</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">defer</span> then.Release()</span><br><span class="line"></span><br><span class="line">    errChan := <span class="built_in">make</span>(<span class="keyword">chan</span> error)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> catch js.Func</span><br><span class="line"></span><br><span class="line">    catch = js.FuncOf(<span class="function"><span class="keyword">func</span><span class="params">(_ js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        errChan &lt;- js.Error&#123;args[<span class="number">0</span>]&#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">defer</span> catch.Release()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">select</span> &#123;</span><br><span class="line">    <span class="keyword">case</span> res := &lt;-resChan:</span><br><span class="line">        <span class="keyword">return</span> res, <span class="literal">nil</span></span><br><span class="line">    <span class="keyword">case</span> err := &lt;-errChan:</span><br><span class="line">        <span class="keyword">return</span> js.Undefined(), err</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fib</span><span class="params">(i <span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">    <span class="keyword">if</span> i == <span class="number">0</span> || i == <span class="number">1</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> fib(i<span class="number">-1</span>) + fib(i<span class="number">-2</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">fibFunc</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">    <span class="keyword">var</span> resPromise, resolve, reject = NewPromise()</span><br><span class="line">    <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">        <span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">            <span class="keyword">if</span> r := <span class="built_in">recover</span>(); r != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> err, ok := r.(error); ok &#123;</span><br><span class="line">                    reject(fmt.Sprintf(<span class="string">"fibFunc: panic: %+v\n"</span>, err))</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    reject(fmt.Sprintf(<span class="string">"fibFunc: panic: %v\n"</span>, r))</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;()</span><br><span class="line">        time.Sleep(<span class="number">3</span> * time.Second)</span><br><span class="line">        v := Await(fib(args[<span class="number">0</span>].Int()))</span><br><span class="line">        resolve(v)</span><br><span class="line">    &#125;()</span><br><span class="line"></span><br><span class="line">    js.Global().Get(<span class="string">"ans"</span>).Set(<span class="string">"innerHTML"</span>, <span class="string">"Waiting 3s..."</span>)</span><br><span class="line">    <span class="keyword">return</span> resPromise</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    done := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">int</span>, <span class="number">0</span>)</span><br><span class="line">    js.Global().Set(<span class="string">"fibFunc"</span>, js.FuncOf(fibFunc))</span><br><span class="line">    &lt;-done</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Rust-3"><a href="#Rust-3" class="headerlink" title="Rust"></a>Rust</h2><p>Rust 非常简单，会将 promise 与 future 自动进行转换，如果我们需要自己新建 promise，可以使用 wasm_bindgen_futures::JsFuture 中调用。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> async_std::task::sleep;</span><br><span class="line"><span class="keyword">use</span> std::time;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::prelude::*;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen_futures::*;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">"C"</span> &#123;</span><br><span class="line">    <span class="meta">#[wasm_bindgen(catch)]</span> <span class="comment">// 引入js的async函数, 调用时只需要await调用即可</span></span><br><span class="line">    <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">async_func_3</span></span>() -&gt; <span class="built_in">Result</span>&lt;JsValue, JsValue&gt;;</span><br><span class="line">    <span class="meta">#[wasm_bindgen(catch)]</span></span><br><span class="line">    <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">async_func_4</span></span>() -&gt; <span class="built_in">Result</span>&lt;(), JsValue&gt;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">fib</span></span>(i: <span class="built_in">u32</span>) -&gt; <span class="built_in">u32</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> i &#123;</span><br><span class="line">        <span class="number">0</span> =&gt; <span class="number">0</span>,</span><br><span class="line">        <span class="number">1</span> =&gt; <span class="number">1</span>,</span><br><span class="line">        _ =&gt; fib(i - <span class="number">1</span>) + fib(i - <span class="number">2</span>),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">sleep_fib</span></span>(i: <span class="built_in">u32</span>) -&gt; <span class="built_in">u32</span> &#123; <span class="comment">// rust会自动转换成promise</span></span><br><span class="line">    sleep(time::Duration::from_secs(<span class="number">1</span>)).<span class="keyword">await</span>;</span><br><span class="line">    fib(i)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="试一试"><a href="#试一试" class="headerlink" title="试一试"></a>试一试</h1><p>我们使用 WebAssembly 做一个简易画板来作为我们的实践项目。</p>
+<h2 id="Go-3"><a href="#Go-3" class="headerlink" title="Go"></a>Go</h2><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">"syscall/js"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> (</span><br><span class="line">    pressed = <span class="literal">false</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    done := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">int</span>, <span class="number">0</span>)</span><br><span class="line">    document := js.Global().Get(<span class="string">"document"</span>)</span><br><span class="line">    canvas := document.Call(<span class="string">"createElement"</span>, <span class="string">"canvas"</span>)</span><br><span class="line">    document.Call(<span class="string">"body"</span>).Call(<span class="string">"appendChild"</span>, canvas)</span><br><span class="line">    canvas.Set(<span class="string">"width"</span>, <span class="number">700</span>)</span><br><span class="line">    canvas.Set(<span class="string">"height"</span>, <span class="number">600</span>)</span><br><span class="line">    context := canvas.Call(<span class="string">"getContext"</span>, <span class="string">"2d"</span>)</span><br><span class="line">    canvas.Call(<span class="string">"addEventListener"</span>, <span class="string">"mousedown"</span>, js.FuncOf(<span class="function"><span class="keyword">func</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        event := args[<span class="number">0</span>]</span><br><span class="line">        context.Call(<span class="string">"beginPath"</span>)</span><br><span class="line">        context.Call(<span class="string">"moveTo"</span>, event.Call(<span class="string">"offset_x"</span>), event.Call(<span class="string">"offset_y"</span>))</span><br><span class="line">        pressed = <span class="literal">true</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">    &#125;))</span><br><span class="line">    canvas.Call(<span class="string">"addEventListener"</span>, <span class="string">"mousemove"</span>, js.FuncOf(<span class="function"><span class="keyword">func</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        event := args[<span class="number">0</span>]</span><br><span class="line">        context.Call(<span class="string">"lineTo"</span>, event.Call(<span class="string">"offset_x"</span>), event.Call(<span class="string">"offset_y"</span>))</span><br><span class="line">        context.Call(<span class="string">"stroke"</span>)</span><br><span class="line">        context.Call(<span class="string">"beginPath"</span>)</span><br><span class="line">        context.Call(<span class="string">"moveTo"</span>, event.Call(<span class="string">"offset_x"</span>), event.Call(<span class="string">"offset_y"</span>))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">    &#125;))</span><br><span class="line">    canvas.Call(<span class="string">"addEventListener"</span>, <span class="string">"mouseup"</span>, js.FuncOf(<span class="function"><span class="keyword">func</span><span class="params">(this js.Value, args []js.Value)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">        event := args[<span class="number">0</span>]</span><br><span class="line">        pressed = <span class="literal">false</span></span><br><span class="line">        context.Call(<span class="string">"lineTo"</span>, event.Call(<span class="string">"offset_x"</span>), event.Call(<span class="string">"offset_y"</span>))</span><br><span class="line">        context.Call(<span class="string">"stroke"</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">    &#125;))</span><br><span class="line">    &lt;-done</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::cell::Cell;</span><br><span class="line"><span class="keyword">use</span> std::rc::Rc;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::prelude::*;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::JsCast;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen(start)]</span> <span class="comment">// 渲染dom时运行</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">start</span></span>() -&gt; <span class="built_in">Result</span>&lt;(), JsValue&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> document = web_sys::window().unwrap().document().unwrap();</span><br><span class="line">    <span class="keyword">let</span> canvas = document</span><br><span class="line">        .create_element(<span class="string">"canvas"</span>)?</span><br><span class="line">        .dyn_into::&lt;web_sys::HtmlCanvasElement&gt;()</span><br><span class="line">        .unwrap();</span><br><span class="line"></span><br><span class="line">    document.body().unwrap().append_child(&amp;canvas)?;</span><br><span class="line">    canvas.set_width(<span class="number">700</span>);</span><br><span class="line">    canvas.set_height(<span class="number">600</span>);</span><br><span class="line">    canvas.style().set_property(<span class="string">"border"</span>, <span class="string">"solid"</span>)?;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> context = canvas</span><br><span class="line">        .get_context(<span class="string">"2d"</span>)?</span><br><span class="line">        .unwrap()</span><br><span class="line">        .dyn_into::&lt;web_sys::CanvasRenderingContext2d&gt;()?;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> context = Rc::new(context);</span><br><span class="line">    <span class="keyword">let</span> pressed = Rc::new(Cell::new(<span class="literal">false</span>));</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> context = context.clone();</span><br><span class="line">        <span class="keyword">let</span> pressed = pressed.clone();</span><br><span class="line">        <span class="keyword">let</span> closure = Closure::wrap(<span class="built_in">Box</span>::new(<span class="keyword">move</span> |event: web_sys::MouseEvent| &#123;</span><br><span class="line">            context.begin_path();</span><br><span class="line">            context.move_to(event.offset_x() <span class="keyword">as</span> <span class="built_in">f64</span>, event.offset_y() <span class="keyword">as</span> <span class="built_in">f64</span>);</span><br><span class="line">            pressed.set(<span class="literal">true</span>);</span><br><span class="line">        &#125;) <span class="keyword">as</span> <span class="built_in">Box</span>&lt;<span class="keyword">dyn</span> <span class="built_in">FnMut</span>(_)&gt;);</span><br><span class="line">        canvas.add_event_listener_with_callback(<span class="string">"mousedown"</span>, closure.as_ref().unchecked_ref())?;</span><br><span class="line">        closure.forget();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> context = context.clone();</span><br><span class="line">        <span class="keyword">let</span> pressed = pressed.clone();</span><br><span class="line">        <span class="keyword">let</span> closure = Closure::wrap(<span class="built_in">Box</span>::new(<span class="keyword">move</span> |event: web_sys::MouseEvent| &#123;</span><br><span class="line">            <span class="keyword">if</span> pressed.get() &#123;</span><br><span class="line">                context.line_to(event.offset_x() <span class="keyword">as</span> <span class="built_in">f64</span>, event.offset_y() <span class="keyword">as</span> <span class="built_in">f64</span>);</span><br><span class="line">                context.stroke();</span><br><span class="line">                context.begin_path();</span><br><span class="line">                context.move_to(event.offset_x() <span class="keyword">as</span> <span class="built_in">f64</span>, event.offset_y() <span class="keyword">as</span> <span class="built_in">f64</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;) <span class="keyword">as</span> <span class="built_in">Box</span>&lt;<span class="keyword">dyn</span> <span class="built_in">FnMut</span>(_)&gt;);</span><br><span class="line">        canvas.add_event_listener_with_callback(<span class="string">"mousemove"</span>, closure.as_ref().unchecked_ref())?;</span><br><span class="line">        closure.forget();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> context = context.clone();</span><br><span class="line">        <span class="keyword">let</span> pressed = pressed.clone();</span><br><span class="line">        <span class="keyword">let</span> closure = Closure::wrap(<span class="built_in">Box</span>::new(<span class="keyword">move</span> |event: web_sys::MouseEvent| &#123;</span><br><span class="line">            pressed.set(<span class="literal">false</span>);</span><br><span class="line">            context.line_to(event.offset_x() <span class="keyword">as</span> <span class="built_in">f64</span>, event.offset_y() <span class="keyword">as</span> <span class="built_in">f64</span>);</span><br><span class="line">            context.stroke();</span><br><span class="line">        &#125;) <span class="keyword">as</span> <span class="built_in">Box</span>&lt;<span class="keyword">dyn</span> <span class="built_in">FnMut</span>(_)&gt;);</span><br><span class="line">        canvas.add_event_listener_with_callback(<span class="string">"mouseup"</span>, closure.as_ref().unchecked_ref())?;</span><br><span class="line">        closure.forget();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="literal">Ok</span>(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="6-更进一步"><a href="#6-更进一步" class="headerlink" title="6. 更进一步"></a>6. 更进一步</h1><p>由于 Go 存在运行时，从而会导致 go 的 wasm 非常大，因此我们需要进行进一步的优化，我个人推荐的是使用 <a href="https://tinygo.org/" target="_blank" rel="noopener">tinygo</a>，它会让你的 wasm 变得非常的小，但是仍需注意的是，tinygo 对 go 的标准库并不是全部支持，因此在选用 go 作为 wasm 的开发语言时，需要注意 tinygo 是否支持，<a href="https://tinygo.org/docs/reference/lang-support/stdlib/" target="_blank" rel="noopener">详情</a>。</p>
+<p>并且 Go 对 async/await 相关的支持也不是很好，可能需要我们自己去封装一个（如 4 章中我封装的 await），但如果你使用 rust，这些问题都将没有，rust 也非常简单易学，相信聪明的你能 3 天上手，5 天出活。</p>
+<p>在这最后的时候，我个人稍微表达下自己的看法，wasm 实际上是不能达到汇编级性能效果，并且他的生态链也与前端工具链关联不大，当你决定使用 wasm 需要考虑一下 js 是否能够完成，毕竟在浏览器的世界里 js 可没有怕过谁，就像《人月神话》中说的那样，软件工程没有银弹。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Golang/" rel="tag"># Golang</a>
+          
+            <a href="/tags/Rust/" rel="tag"># Rust</a>
+          
+            <a href="/tags/WebAssembly/" rel="tag"># WebAssembly</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/07/31/Golang 单元测试极速入门/" rel="next" title="Golang 单元测试极速入门">
+                <i class="fa fa-chevron-left"></i> Golang 单元测试极速入门
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2021/11/02/Gin简易实现/" rel="prev" title="Gin 简易实现">
+                Gin 简易实现 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">12</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Hello-World"><span class="nav-number">2.</span> <span class="nav-text">Hello World</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Go"><span class="nav-number">2.1.</span> <span class="nav-text">Go</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Rust"><span class="nav-number">2.2.</span> <span class="nav-text">Rust</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#注册函数"><span class="nav-number">3.</span> <span class="nav-text">注册函数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Go-1"><span class="nav-number">3.1.</span> <span class="nav-text">Go</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Rust-1"><span class="nav-number">3.2.</span> <span class="nav-text">Rust</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#操作-DOM"><span class="nav-number">4.</span> <span class="nav-text">操作 DOM</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#GO"><span class="nav-number">4.1.</span> <span class="nav-text">GO</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Rust-2"><span class="nav-number">4.2.</span> <span class="nav-text">Rust</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#异步"><span class="nav-number">5.</span> <span class="nav-text">异步</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Go-2"><span class="nav-number">5.1.</span> <span class="nav-text">Go</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Rust-3"><span class="nav-number">5.2.</span> <span class="nav-text">Rust</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#试一试"><span class="nav-number">6.</span> <span class="nav-text">试一试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Go-3"><span class="nav-number">6.1.</span> <span class="nav-text">Go</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-更进一步"><span class="nav-number">7.</span> <span class="nav-text">6. 更进一步</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

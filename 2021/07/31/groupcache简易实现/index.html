@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="商业世界里，现金为王；架构世界里，缓存为王。  序言缓存在我们计算机系统中无处不在，对于我们前端来说，从大的网页和引用的 JS/CSS 等静态文件的缓存到小的点赞功能，都会运用到缓存，缓存的存在可以减少耗时的数据库查询，支持更多流量。当我们在设计一个缓存系统的时候，我们也会遇到很多问题：   内存不够了怎么办？ 并发写入冲突了怎么办？ 单机性能不够怎么办？ ……   本文根据 golang 官方">
+<meta name="keywords" content="NodeJs,缓存,分布式">
+<meta property="og:type" content="article">
+<meta property="og:title" content="groupcache简易实现">
+<meta property="og:url" content="https://akitaSummer.github.io/2021/07/31/groupcache简易实现/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="商业世界里，现金为王；架构世界里，缓存为王。  序言缓存在我们计算机系统中无处不在，对于我们前端来说，从大的网页和引用的 JS/CSS 等静态文件的缓存到小的点赞功能，都会运用到缓存，缓存的存在可以减少耗时的数据库查询，支持更多流量。当我们在设计一个缓存系统的时候，我们也会遇到很多问题：   内存不够了怎么办？ 并发写入冲突了怎么办？ 单机性能不够怎么办？ ……   本文根据 golang 官方">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/main.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/lru.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/cache.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/group.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/group_v2.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/b9d37767-7df2-482a-ac46-588dd67b6685.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/server_with_group.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/mult_group.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/mult_req.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/groupcache/single_req.jpg">
+<meta property="og:updated_time" content="2023-02-13T13:16:44.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="groupcache简易实现">
+<meta name="twitter:description" content="商业世界里，现金为王；架构世界里，缓存为王。  序言缓存在我们计算机系统中无处不在，对于我们前端来说，从大的网页和引用的 JS/CSS 等静态文件的缓存到小的点赞功能，都会运用到缓存，缓存的存在可以减少耗时的数据库查询，支持更多流量。当我们在设计一个缓存系统的时候，我们也会遇到很多问题：   内存不够了怎么办？ 并发写入冲突了怎么办？ 单机性能不够怎么办？ ……   本文根据 golang 官方">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/groupcache/main.jpg">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2021/07/31/groupcache简易实现/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>groupcache简易实现 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2021/07/31/groupcache简易实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">groupcache简易实现
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2021-07-31 01:17:09" itemprop="dateCreated datePublished" datetime="2021-07-31T01:17:09+08:00">2021-07-31</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-02-13 21:16:44" itemprop="dateModified" datetime="2023-02-13T21:16:44+08:00">2023-02-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2021/07/31/groupcache简易实现/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2021/07/31/groupcache简易实现/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>商业世界里，现金为王；架构世界里，缓存为王。</p>
+</blockquote>
+<h1 id="序言"><a href="#序言" class="headerlink" title="序言"></a>序言</h1><p>缓存在我们计算机系统中无处不在，对于我们前端来说，从大的网页和引用的 JS/CSS 等静态文件的缓存到小的点赞功能，都会运用到缓存，缓存的存在可以减少耗时的数据库查询，支持更多流量。当我们在设计一个缓存系统的时候，我们也会遇到很多问题：</p>
+<blockquote>
+<ol>
+<li>内存不够了怎么办？</li>
+<li>并发写入冲突了怎么办？</li>
+<li>单机性能不够怎么办？</li>
+<li>……</li>
+</ol>
+</blockquote>
+<p>本文根据 golang 官方库 groupcache 实现了一个简易的分布式缓存系统，它的具体架构如下：</p>
+<p><img src="/image/groupcache/main.jpg" alt="groupcache 架构"></p>
+<p>主要分为查询本机缓存（黑色）和查询分布节点缓存（红色），其中 client 是指接受请求的服务器，他会将其分发到自身的每个 group，group 是用于处理请求，返回缓存数据的重要模块，它包含 cache，server 和 local value generate 三个模块，当一个查询进来后，会先调用 cache 去内存中查询缓存，如果未命中，则调用 server 去判断是否需要查询其他分布式节点，如果不需要，则调用自身 local value generate 生成缓存。</p>
+<p>接下来我将会从最小粒度的 cache 开始，一步步搭建，带你构建出一个简易的 groupcache 实现。</p>
+<h1 id="LRU-缓存淘汰策略"><a href="#LRU-缓存淘汰策略" class="headerlink" title="LRU: 缓存淘汰策略"></a>LRU: 缓存淘汰策略</h1><p>由于缓存全部存储在内存中，内存是有限的，因此不可能无限制地添加数据。如何判断缓存是否“没用”是关键的问题。常用的缓存淘汰策略有三种：FIFO，LFU 和 LRU。</p>
+<p>FIFO : FIFO 算法是一种比较容易实现的算法。它的思想是先进先出（FIFO，队列），这是最简单、最公平的一种思想，即如果一个数据是最先进入的，那么可以认为在将来它被访问的可能性很小。<strong>空间满的时候，最先进入的数据会被最早置换（淘汰）掉。</strong></p>
+<p>LFU: LFU（Least Frequently Used ，最近最少使用算法）也是一种常见的缓存算法。顾名思义，LFU 算法的思想是：如果一个数据在最近一段时间很少被访问到，那么可以认为在将来它被访问的可能性也很小。<strong>因此，当空间满时，最小频率访问的数据最先被淘汰。</strong></p>
+<p>LRU: LRU（The Least Recently Used，最近最久未使用算法）是一种常见的缓存算法，在很多分布式缓存系统（如 Redis, Memcached）中都有广泛使用。LRU 算法的思想是：如果一个数据在最近一段时间没有被访问到，那么可以认为在将来它被访问的可能性也很小。<strong>因此，当空间满时，最久没有访问的数据最先被置换（淘汰）。</strong></p>
+<p>groupcache 中使用了 LRU 作为 Cache 的缓存淘汰策略，我们将实现一个简单的 LRU：</p>
+<p><img src="/image/groupcache/lru.png" alt="lru"></p>
+<p>绿色部分是一个 map，用于映射 key，value，使得复杂度为 O(1)，红色部分是一个双向连表，用于将值进行排序，其 CRUD 的复杂度为 O(1)。</p>
+<p>数据结构实现：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> Entry &#123;</span><br><span class="line">  <span class="comment">// 存储的数据类型</span></span><br><span class="line">  key: <span class="built_in">string</span>;</span><br><span class="line">  value: <span class="built_in">any</span>;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">key: <span class="built_in">string</span>, value: <span class="built_in">any</span></span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.key = key;</span><br><span class="line">    <span class="keyword">this</span>.value = value;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 双向链表</span></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> ListNode &#123;</span><br><span class="line">  before: ListNode | <span class="literal">null</span>;</span><br><span class="line">  next: ListNode | <span class="literal">null</span>;</span><br><span class="line">  value: Entry;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">value: Entry, before?: ListNode, next?: ListNode</span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.value = value;</span><br><span class="line">    <span class="keyword">this</span>.before = before || <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">this</span>.next = next || <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> List &#123;</span><br><span class="line">  root: <span class="literal">null</span> | ListNode;</span><br><span class="line">  len: <span class="built_in">number</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.root = <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">this</span>.len = <span class="number">0</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> checkNodeExist(el: ListNode): ListNode &#123;</span><br><span class="line">    <span class="keyword">let</span> node = <span class="keyword">this</span>.root;</span><br><span class="line">    <span class="keyword">if</span> (!node) &#123;</span><br><span class="line">      <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'this node is not exist'</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> (!!node) &#123;</span><br><span class="line">      <span class="keyword">if</span> (el !== node) &#123;</span><br><span class="line">        node = node.next;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        node = el;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (!node) &#123;</span><br><span class="line">      <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'this node is not exist'</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> node;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  MoveToFront(el: ListNode) &#123;</span><br><span class="line">    <span class="keyword">const</span> node = <span class="keyword">this</span>.checkNodeExist(el);</span><br><span class="line">    <span class="keyword">if</span> (node.before) &#123;</span><br><span class="line">      node.before.next = node.next;</span><br><span class="line">      <span class="keyword">const</span> head = <span class="keyword">this</span>.root;</span><br><span class="line">      <span class="keyword">this</span>.root = node;</span><br><span class="line">      <span class="keyword">this</span>.root.before = <span class="literal">null</span>;</span><br><span class="line">      <span class="keyword">this</span>.root.next = head;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Back(): ListNode | <span class="literal">null</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> node = <span class="keyword">this</span>.root;</span><br><span class="line">    <span class="keyword">if</span> (node === <span class="literal">null</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> node;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> (node.next !== <span class="literal">null</span>) &#123;</span><br><span class="line">      node = node.next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> node;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Remove(el: ListNode) &#123;</span><br><span class="line">    <span class="keyword">const</span> node = <span class="keyword">this</span>.checkNodeExist(el);</span><br><span class="line">    <span class="keyword">if</span> (node.before) &#123;</span><br><span class="line">      node.before.next = node.next;</span><br><span class="line">      node.next = <span class="literal">null</span>;</span><br><span class="line">      <span class="keyword">this</span>.len -= <span class="number">1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="keyword">this</span>.root = node.next;</span><br><span class="line">      node.next = <span class="literal">null</span>;</span><br><span class="line">      <span class="keyword">this</span>.len -= <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  PushFront(value: Entry) &#123;</span><br><span class="line">    <span class="keyword">const</span> node = <span class="keyword">new</span> ListNode(value, <span class="literal">null</span>, <span class="keyword">this</span>.root);</span><br><span class="line">    <span class="keyword">this</span>.root = node;</span><br><span class="line">    <span class="keyword">this</span>.len += <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">return</span> node;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>LRU 实现：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; List, ListNode, Entry &#125; <span class="keyword">from</span> <span class="string">'./list'</span>;</span><br><span class="line"><span class="keyword">import</span> sizeof <span class="keyword">from</span> <span class="string">'object-sizeof'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> LruCache &#123;</span><br><span class="line">  maxBytes: <span class="built_in">number</span>; <span class="comment">// 最大内存</span></span><br><span class="line">  nbytes: <span class="built_in">number</span>; <span class="comment">// 已使用的内存</span></span><br><span class="line">  ll: List; <span class="comment">// 双向链表</span></span><br><span class="line">  cache: &#123; [propsName: <span class="built_in">string</span>]: ListNode &#125;;</span><br><span class="line">  onEvicted: <span class="function">(<span class="params">key: <span class="built_in">string</span>, value: <span class="built_in">any</span></span>) =&gt;</span> <span class="built_in">void</span> | <span class="literal">null</span>; <span class="comment">// 清除条目时执行的函数</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">maxBytes: <span class="built_in">number</span>, onEvicted?: (key: <span class="built_in">string</span>, value: <span class="built_in">any</span>) =&gt; <span class="built_in">void</span></span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.maxBytes = maxBytes;</span><br><span class="line">    <span class="keyword">this</span>.ll = <span class="keyword">new</span> List();</span><br><span class="line">    <span class="keyword">this</span>.cache = &#123;&#125;;</span><br><span class="line">    <span class="keyword">this</span>.onEvicted = onEvicted || <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">this</span>.nbytes = <span class="number">0</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 查询</span></span><br><span class="line">  Get(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">const</span> ele = <span class="keyword">this</span>.cache[key];</span><br><span class="line">    <span class="keyword">if</span> (ele) &#123;</span><br><span class="line">      <span class="comment">// 如果键对应的链表节点存在，则将对应节点移动到队尾，并返回查找到的值。</span></span><br><span class="line">      <span class="keyword">this</span>.ll.MoveToFront(ele);</span><br><span class="line">      <span class="keyword">const</span> kv = ele.value;</span><br><span class="line">      <span class="keyword">return</span> kv;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 缓存淘汰</span></span><br><span class="line">  RemoveOldest() &#123;</span><br><span class="line">    <span class="keyword">const</span> ele = <span class="keyword">this</span>.ll.Back();</span><br><span class="line">    <span class="keyword">if</span> (ele) &#123;</span><br><span class="line">      <span class="comment">// 移除队列首结点</span></span><br><span class="line">      <span class="keyword">this</span>.ll.Remove(ele);</span><br><span class="line">      <span class="keyword">const</span> kv = ele.value;</span><br><span class="line">      <span class="keyword">delete</span> <span class="keyword">this</span>.cache[kv.key];</span><br><span class="line">      <span class="keyword">this</span>.nbytes -= sizeof(kv);</span><br><span class="line">      <span class="comment">// 调用回调</span></span><br><span class="line">      <span class="keyword">if</span> (<span class="keyword">this</span>.onEvicted !== <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="keyword">this</span>.onEvicted(kv.key, kv.value);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 新增/更新</span></span><br><span class="line">  Add(key: <span class="built_in">string</span>, value: <span class="built_in">any</span>) &#123;</span><br><span class="line">    <span class="keyword">let</span> ele = <span class="keyword">this</span>.cache[key];</span><br><span class="line">    <span class="keyword">if</span> (ele) &#123;</span><br><span class="line">      <span class="comment">// 更新</span></span><br><span class="line">      <span class="keyword">this</span>.ll.MoveToFront(ele);</span><br><span class="line">      <span class="keyword">const</span> kv = ele.value;</span><br><span class="line">      <span class="keyword">this</span>.nbytes += sizeof(value) - sizeof(kv.value);</span><br><span class="line">      kv.value = value;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 新建</span></span><br><span class="line">      <span class="keyword">const</span> entry = <span class="keyword">new</span> Entry(key, value);</span><br><span class="line">      ele = <span class="keyword">this</span>.ll.PushFront(entry);</span><br><span class="line">      <span class="keyword">this</span>.cache[key] = ele;</span><br><span class="line">      <span class="keyword">this</span>.nbytes += sizeof(entry);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 超出最大值则清除最少访问的节点</span></span><br><span class="line">    <span class="keyword">while</span> (<span class="keyword">this</span>.maxBytes !== <span class="number">0</span> &amp;&amp; <span class="keyword">this</span>.maxBytes &lt; <span class="keyword">this</span>.nbytes) &#123;</span><br><span class="line">      <span class="keyword">this</span>.RemoveOldest();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 查询数据数量</span></span><br><span class="line">  Len() &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>.ll.len;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> test <span class="keyword">from</span> <span class="string">'ava'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; List, ListNode, Entry &#125; <span class="keyword">from</span> <span class="string">'./list'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; LruCache &#125; <span class="keyword">from</span> <span class="string">'./lru'</span>;</span><br><span class="line"><span class="keyword">import</span> sizeof <span class="keyword">from</span> <span class="string">'object-sizeof'</span>;</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test cache get'</span>, <span class="function"><span class="params">t</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> lru = <span class="keyword">new</span> LruCache(<span class="number">0</span>);</span><br><span class="line">  lru.Add(<span class="string">'key1'</span>, <span class="string">'1234'</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> value1 = lru.Get(<span class="string">'key1'</span>).value;</span><br><span class="line">  t.is(value1, <span class="string">'1234'</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> value2 = lru.Get(<span class="string">'key2'</span>);</span><br><span class="line">  t.is(value2, <span class="literal">null</span>);</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test cache Removeoldest'</span>, <span class="function"><span class="params">t</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> [k1, k2, k3] = [<span class="string">'key1'</span>, <span class="string">'key2'</span>, <span class="string">'k3'</span>];</span><br><span class="line">  <span class="keyword">const</span> [v1, v2, v3] = [<span class="string">'value1'</span>, <span class="string">'value2'</span>, <span class="string">'v3'</span>];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> cap = sizeof(<span class="keyword">new</span> Entry(k1, v1)) + sizeof(<span class="keyword">new</span> Entry(k2, v2));</span><br><span class="line">  <span class="keyword">const</span> lru = <span class="keyword">new</span> LruCache(cap);</span><br><span class="line">  lru.Add(k1, v1);</span><br><span class="line">  lru.Add(k2, v2);</span><br><span class="line">  lru.Add(k3, v3);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> value1 = lru.Get(<span class="string">'key1'</span>);</span><br><span class="line">  t.is(value1, <span class="literal">null</span>);</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test cache onEvicted'</span>, <span class="function"><span class="params">t</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> keys: <span class="built_in">string</span>[] = [];</span><br><span class="line">  <span class="keyword">const</span> callback = <span class="function">(<span class="params">key: <span class="built_in">string</span>, value: <span class="built_in">any</span></span>) =&gt;</span> &#123;</span><br><span class="line">    keys.push(key);</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> [k1, k2, k3] = [<span class="string">'key1'</span>, <span class="string">'key2'</span>, <span class="string">'k3'</span>];</span><br><span class="line">  <span class="keyword">const</span> [v1, v2, v3] = [<span class="string">'value1'</span>, <span class="string">'value2'</span>, <span class="string">'v3'</span>];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> cap = sizeof(<span class="keyword">new</span> Entry(k1, v1)) + sizeof(<span class="keyword">new</span> Entry(k2, v2));</span><br><span class="line">  <span class="keyword">const</span> lru = <span class="keyword">new</span> LruCache(cap, callback);</span><br><span class="line">  lru.Add(k1, v1);</span><br><span class="line">  lru.Add(k2, v2);</span><br><span class="line">  lru.Add(k3, v3);</span><br><span class="line"></span><br><span class="line">  t.deepEqual(keys, [<span class="string">'key1'</span>]);</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test cache add'</span>, <span class="function"><span class="params">t</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> [k1, k2, k3] = [<span class="string">'key1'</span>, <span class="string">'key2'</span>, <span class="string">'k3'</span>];</span><br><span class="line">  <span class="keyword">const</span> [v1, v2, v3] = [<span class="string">'value1'</span>, <span class="string">'value2'</span>, <span class="string">'v3'</span>];</span><br><span class="line">  <span class="keyword">const</span> size = sizeof(<span class="keyword">new</span> Entry(k1, v1)) + sizeof(<span class="keyword">new</span> Entry(k2, v2)) + sizeof(<span class="keyword">new</span> Entry(k3, v3));</span><br><span class="line">  <span class="keyword">const</span> lru = <span class="keyword">new</span> LruCache(<span class="number">0</span>);</span><br><span class="line">  lru.Add(k1, v1);</span><br><span class="line">  lru.Add(k2, v2);</span><br><span class="line">  lru.Add(k3, v3);</span><br><span class="line"></span><br><span class="line">  t.deepEqual(lru.nbytes, size);</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<h1 id="Cache-并发缓存"><a href="#Cache-并发缓存" class="headerlink" title="Cache: 并发缓存"></a>Cache: 并发缓存</h1><p>我们已经实现了对缓存的 CRUD，但是，多线程高并发的时候，会发生冲突，在 GO 中，我们需要确保只有一个协程可以访问，这时候需要使用锁来解决。</p>
+<p><img src="/image/groupcache/cache.jpg" alt="cache"></p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"><span class="keyword">import</span> clone <span class="keyword">from</span> <span class="string">'rfdc'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; LruCache &#125; <span class="keyword">from</span> <span class="string">'./lru/lru'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> CACHENAMEMAP: &#123; [propsName: <span class="built_in">string</span>]: Cache &#125; = &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> GLOBALLOCK = <span class="keyword">new</span> AsyncLock();</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> Cache &#123;</span><br><span class="line">  name: <span class="built_in">string</span>;</span><br><span class="line">  mu: AsyncLock;</span><br><span class="line">  lru: LruCache;</span><br><span class="line">  cacheBytes: <span class="built_in">number</span>;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">name: <span class="built_in">string</span>, cacheBytes: <span class="built_in">number</span></span>) &#123;</span><br><span class="line">    name = <span class="string">`__CACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.mu = <span class="keyword">new</span> AsyncLock();</span><br><span class="line">    <span class="keyword">this</span>.cacheBytes = cacheBytes;</span><br><span class="line">    CACHENAMEMAP[name] = <span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> add(key: <span class="built_in">string</span>, value: <span class="built_in">any</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.mu.acquire(<span class="keyword">this</span>.name, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="keyword">this</span>.lru) &#123;</span><br><span class="line">          <span class="keyword">this</span>.lru = <span class="keyword">new</span> LruCache(<span class="keyword">this</span>.cacheBytes);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.lru.Add(key, clone(&#123; proto: <span class="literal">true</span> &#125;)(value));</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> <span class="keyword">get</span>(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> result = <span class="keyword">await</span> <span class="keyword">this</span>.mu.acquire(<span class="keyword">this</span>.name, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="keyword">this</span>.lru) &#123;</span><br><span class="line">          <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> clone(&#123; proto: <span class="literal">true</span> &#125;)(<span class="keyword">this</span>.lru.Get(key));</span><br><span class="line">      &#125;);</span><br><span class="line">      <span class="keyword">return</span> result;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> newCache = <span class="keyword">async</span> (name: <span class="built_in">string</span>, cacheBytes: <span class="built_in">number</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> cache = <span class="keyword">await</span> GLOBALLOCK.acquire(<span class="string">'___CACHE___NEW___'</span>, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__CACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">if</span> (CACHENAMEMAP[mapName]) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'this name is exist'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Cache(name, cacheBytes);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> cache;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h1 id="Group-主体结构"><a href="#Group-主体结构" class="headerlink" title="Group: 主体结构"></a>Group: 主体结构</h1><p>Group 是整个项目最核心的主体结构，负责与用户的交互，并且控制缓存值存储和获取的流程。具体处理的流程如下：</p>
+<p><img src="/image/groupcache/group.jpg" alt="group"></p>
+<p>实现 Group：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Cache, newCache &#125; <span class="keyword">from</span> <span class="string">'./cache'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Entry &#125; <span class="keyword">from</span> <span class="string">'./lru/list'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> AKTCACHENAMEMAP: &#123; [propsName: <span class="built_in">string</span>]: Group &#125; = &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> GLOBALLOCK = <span class="keyword">new</span> AsyncLock();</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">interface</span> Getter &#123;</span><br><span class="line">  Get(key: <span class="built_in">string</span>): <span class="built_in">any</span> | <span class="built_in">Promise</span>&lt;<span class="built_in">any</span>&gt; | <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> Group &#123;</span><br><span class="line">  name: <span class="built_in">string</span>;</span><br><span class="line">  getter: Getter;</span><br><span class="line">  mainCache: Cache;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">name: <span class="built_in">string</span>, getters: Getter, mainCache: Cache</span>) &#123;</span><br><span class="line">    name = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.getter = getters;</span><br><span class="line">    <span class="keyword">this</span>.mainCache = mainCache;</span><br><span class="line">    AKTCACHENAMEMAP[name] = <span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> <span class="keyword">get</span>(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;<span class="built_in">any</span> | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">if</span> (!key) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> v = <span class="keyword">await</span> <span class="keyword">this</span>.mainCache.get(key);</span><br><span class="line">      <span class="keyword">if</span> (v !== <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> v.value;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">const</span> loadv = <span class="keyword">await</span> <span class="keyword">this</span>.load(key);</span><br><span class="line">      <span class="keyword">return</span> loadv ? loadv.value : <span class="literal">null</span>;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> load(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;Entry | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// TODO</span></span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">await</span> <span class="keyword">this</span>.getLocall(key);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> getLocall(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;Entry | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> value = <span class="keyword">await</span> <span class="keyword">this</span>.getter.Get(key);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.populateCache(key, value);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Entry(key, value);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">async</span> populateCache(key: <span class="built_in">string</span>, v: <span class="built_in">any</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.mainCache.add(key, v);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> newGroup = <span class="keyword">async</span> (name: <span class="built_in">string</span>, getters: Getter, cacheBytes: <span class="built_in">number</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> group = <span class="keyword">await</span> GLOBALLOCK.acquire(<span class="string">'___AKTCGROUP___NEW___'</span>, <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">if</span> (AKTCACHENAMEMAP[mapName]) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'this name is exist'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">const</span> cache = <span class="keyword">await</span> newCache(<span class="string">`__GROUP__CREATE__<span class="subst">$&#123;name&#125;</span>`</span>, cacheBytes);</span><br><span class="line">      <span class="keyword">if</span> (!cache) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'create cache failed'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Group(name, getters, cache);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> group;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> getGroup = <span class="keyword">async</span> (name: <span class="built_in">string</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> group = GLOBALLOCK.acquire(<span class="string">'___AKTCGROUP___GET___'</span>, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">return</span> AKTCACHENAMEMAP[mapName] || <span class="literal">null</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> group;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> test <span class="keyword">from</span> <span class="string">'ava'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; newGroup, Getter, getGroup &#125; <span class="keyword">from</span> <span class="string">'./aktcache'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> db = &#123;</span><br><span class="line">  akt: <span class="string">'123'</span>,</span><br><span class="line">  akita: <span class="string">'321'</span>,</span><br><span class="line">  akitasummer: <span class="string">'213'</span>,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test AktCache get'</span>, <span class="keyword">async</span> t =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> loadCounts: &#123; [propsName: <span class="built_in">string</span>]: <span class="built_in">number</span> &#125; = &#123;&#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> getter: Getter = &#123;</span><br><span class="line">    Get(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">      <span class="keyword">const</span> v = db[key];</span><br><span class="line">      <span class="keyword">if</span> (v) &#123;</span><br><span class="line">        <span class="keyword">const</span> counts = loadCounts[key];</span><br><span class="line">        <span class="keyword">if</span> (!counts) &#123;</span><br><span class="line">          loadCounts[key] = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        loadCounts[key] += <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">return</span> v;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> akt = <span class="keyword">await</span> newGroup(<span class="string">'num'</span>, getter, <span class="number">2048</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> keys = <span class="built_in">Object</span>.keys(db);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; keys.length; i++) &#123;</span><br><span class="line">    <span class="keyword">const</span> key = keys[i];</span><br><span class="line">    <span class="keyword">const</span> v = <span class="keyword">await</span> akt.get(key);</span><br><span class="line">    t.is(v, db[key]);</span><br><span class="line">    <span class="keyword">await</span> akt.get(key);</span><br><span class="line">    t.false(loadCounts[key] &gt; <span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> v = <span class="keyword">await</span> akt.get(<span class="string">'test'</span>);</span><br><span class="line"></span><br><span class="line">  t.is(v, <span class="literal">null</span>);</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test AktCache getGroup'</span>, <span class="keyword">async</span> t =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> groupName = <span class="string">'num1'</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> getter: Getter = &#123;</span><br><span class="line">    Get(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> akt = <span class="keyword">await</span> newGroup(groupName, getter, <span class="number">2048</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> group = <span class="keyword">await</span> getGroup(groupName);</span><br><span class="line"></span><br><span class="line">  t.deepEqual(group, akt);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> notGroup = <span class="keyword">await</span> getGroup(<span class="string">'1234'</span>);</span><br><span class="line"></span><br><span class="line">  t.is(notGroup, <span class="literal">null</span>);</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>这样，一个单机并发缓存已经完成了，现在我们已经构建的情况是这样的了：</p>
+<p><img src="/image/groupcache/group_v2.jpg" alt="group_v2"></p>
+<h1 id="Server：HTTP-服务端"><a href="#Server：HTTP-服务端" class="headerlink" title="Server：HTTP 服务端"></a>Server：HTTP 服务端</h1><p>由于我们分布式缓存需要实现节点间通信，使用 HTTP 进行通信是较为常见的方式，接下来我们实现 Group 中的 server 部分，用来被其他节点访问：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> express, &#123; Express, Request, Response, NextFunction &#125; <span class="keyword">from</span> <span class="string">'express'</span>;</span><br><span class="line"><span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span>;</span><br><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; ConsistentHashMap &#125; <span class="keyword">from</span> <span class="string">'./consistenthash/consistenthash'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; getGroup &#125; <span class="keyword">from</span> <span class="string">'./aktcache'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> defaultBasePath = <span class="string">'/_aktcache/'</span>;</span><br><span class="line"><span class="keyword">const</span> defaultReplicas = <span class="number">50</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> HTTPLOCK = <span class="keyword">new</span> AsyncLock();</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> HTTP &#123;</span><br><span class="line">  self: <span class="built_in">string</span>; <span class="comment">// 记录自己的ip</span></span><br><span class="line">  port: <span class="built_in">number</span>; <span class="comment">// 记录自己的ip/端口</span></span><br><span class="line">  basePath: <span class="built_in">string</span>; <span class="comment">// 节点间通讯地址的前缀</span></span><br><span class="line">  server: Express;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">self: <span class="built_in">string</span>, port: <span class="built_in">number</span>, callback?: () =&gt; <span class="built_in">void</span></span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.self = self;</span><br><span class="line">    <span class="keyword">this</span>.port = port;</span><br><span class="line">    <span class="keyword">this</span>.basePath = defaultBasePath;</span><br><span class="line">    <span class="keyword">this</span>.server = express();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> router = express.Router();</span><br><span class="line"></span><br><span class="line">    router.get(<span class="string">`<span class="subst">$&#123;<span class="keyword">this</span>.basePath&#125;</span>*`</span>, <span class="keyword">async</span> (request: Request, response: Response) =&gt; &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(</span><br><span class="line">        <span class="string">`[Server <span class="subst">$&#123;<span class="keyword">this</span>.self + <span class="string">':'</span> + <span class="keyword">this</span>.port&#125;</span>] method: <span class="subst">$&#123;request.method&#125;</span>, path: <span class="subst">$&#123;request.path&#125;</span>`</span>,</span><br><span class="line">      );</span><br><span class="line"></span><br><span class="line">      <span class="keyword">const</span> parts = request.path.replace(<span class="keyword">this</span>.basePath, <span class="string">''</span>).split(<span class="string">'/'</span>);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (parts.length !== <span class="number">2</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> response.status(<span class="number">400</span>).send(&#123;</span><br><span class="line">          message: <span class="string">'path error'</span>,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">const</span> groupName = parts[<span class="number">0</span>];</span><br><span class="line">      <span class="keyword">const</span> key = parts[<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">const</span> group = <span class="keyword">await</span> getGroup(groupName);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (group === <span class="literal">null</span>) &#123;</span><br><span class="line">          <span class="keyword">return</span> response.status(<span class="number">404</span>).send(&#123;</span><br><span class="line">            message: <span class="string">`no such group: <span class="subst">$&#123;groupName&#125;</span>`</span>,</span><br><span class="line">          &#125;);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">const</span> value = <span class="keyword">await</span> group.get(key);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (value === <span class="literal">null</span>) &#123;</span><br><span class="line">          <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">            message: <span class="string">`server error`</span>,</span><br><span class="line">          &#125;);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        response.setHeader(<span class="string">'Content-Type'</span>, <span class="string">'application/octet-stream'</span>);</span><br><span class="line">        response.status(<span class="number">200</span>).send(&#123;</span><br><span class="line">          data: value,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(e);</span><br><span class="line">        <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">          message: <span class="string">`server error`</span>,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.server.use(express.json());</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.server.use(<span class="string">'/'</span>, router);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.server.listen(<span class="keyword">this</span>.port, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(<span class="string">`server run in <span class="subst">$&#123;<span class="keyword">this</span>.self + <span class="string">':'</span> + <span class="keyword">this</span>.port&#125;</span>`</span>);</span><br><span class="line">      callback &amp;&amp; callback();</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这样，我们供其他节点访问的的 HTTPserver 就完成了。</p>
+<h1 id="ConsistentHash-一致性哈希值"><a href="#ConsistentHash-一致性哈希值" class="headerlink" title="ConsistentHash: 一致性哈希值"></a>ConsistentHash: 一致性哈希值</h1><p>当一个节点收到请求后，如果他没有缓存值，他需要知道去哪里获取新的数据，hash 算法可以做到对于给定的 key，返回一个特定的节点值，让其访问。</p>
+<p>当节点数发生变化时，可能会导致缓存值对应的节点都发生了改变。即几乎所有的缓存值都失效，需要重新去数据源获取数据，容易引起缓存雪崩。</p>
+<blockquote>
+<p>缓存雪崩：缓存在同一时刻全部失效，造成瞬时 DB 请求量大、压力骤增，引起雪崩。常因为缓存服务器宕机，或缓存设置了相同的过期时间引起。</p>
+</blockquote>
+<p>groupcache 中选用了一致性哈希算法解决了这个问题，它将 key 映射到 2^32 的空间中，将这个数字首尾相连，形成一个环，通过计算节点的哈希值，放置在环上。当我们使用 key 获取 value 时，计算 key 的哈希值，顺时针寻找到的第一个节点，就是应选取的节点。</p>
+<p><img src="/image/groupcache/b9d37767-7df2-482a-ac46-588dd67b6685.png" alt="ConsistentHash"></p>
+<p>但是当节点数过少时，会引起 key 的倾斜，导致节点间负载不均。groupcache 中引入了虚拟节点的概念，一个真实节点对应多个虚拟节点。并且使用一个 map 维护真实节点与虚拟节点的映射关系，通过这样增加虚拟节点，减少 key 的倾斜。</p>
+<p>接下来我们实现一致性哈希：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; crc32 &#125; <span class="keyword">from</span> <span class="string">'node-crc'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">type</span> Hash = <span class="function">(<span class="params">data: <span class="built_in">any</span></span>) =&gt;</span> <span class="built_in">string</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> ConsistentHashMap &#123;</span><br><span class="line">  hash: Hash;</span><br><span class="line">  replicas: <span class="built_in">number</span>;</span><br><span class="line">  keys: <span class="built_in">string</span>[];</span><br><span class="line">  hashMap: Map&lt;<span class="built_in">string</span>, <span class="built_in">string</span>&gt;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">replicas: <span class="built_in">number</span>, fn?: Hash</span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.replicas = replicas;</span><br><span class="line">    <span class="keyword">this</span>.hashMap = <span class="keyword">new</span> Map&lt;<span class="built_in">string</span>, <span class="built_in">string</span>&gt;();</span><br><span class="line">    <span class="keyword">this</span>.keys = [];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!fn) &#123;</span><br><span class="line">      fn = <span class="function">(<span class="params">data: <span class="built_in">any</span></span>) =&gt;</span> crc32(Buffer.from(data, <span class="string">'utf8'</span>)).toString(<span class="string">'hex'</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.hash = fn;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Add(...keys: <span class="built_in">string</span>[]) &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; keys.length; i++) &#123;</span><br><span class="line">      <span class="keyword">const</span> key = keys[i];</span><br><span class="line">      <span class="keyword">for</span> (<span class="keyword">let</span> j = <span class="number">0</span>; j &lt; <span class="keyword">this</span>.replicas; j++) &#123;</span><br><span class="line">        <span class="keyword">const</span> hash = <span class="keyword">this</span>.hash(j + key);</span><br><span class="line">        <span class="keyword">this</span>.keys.push(hash);</span><br><span class="line">        <span class="keyword">this</span>.hashMap[hash] = key;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">this</span>.keys = <span class="keyword">this</span>.keys.sort();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Get(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>.keys.length === <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> hash = <span class="keyword">this</span>.hash(key);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> idx = <span class="keyword">this</span>.keys.findIndex(<span class="function"><span class="params">item</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">return</span> BigInt(item) &gt;= BigInt(hash);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (idx === <span class="number">-1</span>) &#123;</span><br><span class="line">      idx = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>.hashMap[<span class="keyword">this</span>.keys[<span class="built_in">Number</span>(BigInt(idx) % BigInt(<span class="keyword">this</span>.keys.length))]];</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> test <span class="keyword">from</span> <span class="string">'ava'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; ConsistentHashMap &#125; <span class="keyword">from</span> <span class="string">'./consistenthash'</span>;</span><br><span class="line"></span><br><span class="line">test(<span class="string">'test hash'</span>, <span class="keyword">async</span> t =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> hash = <span class="keyword">new</span> ConsistentHashMap(<span class="number">3</span>, <span class="function">(<span class="params">key: <span class="built_in">any</span></span>) =&gt;</span> key.toString());</span><br><span class="line"></span><br><span class="line">  hash.Add(<span class="string">'6'</span>, <span class="string">'4'</span>, <span class="string">'2'</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> testCases = &#123;</span><br><span class="line">    <span class="string">'2'</span>: <span class="string">'2'</span>,</span><br><span class="line">    <span class="string">'11'</span>: <span class="string">'2'</span>,</span><br><span class="line">    <span class="string">'23'</span>: <span class="string">'4'</span>,</span><br><span class="line">    <span class="string">'27'</span>: <span class="string">'2'</span>,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> keys = <span class="built_in">Object</span>.keys(testCases);</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; keys.length; i++) &#123;</span><br><span class="line">    t.is(hash.Get(keys[i]), testCases[keys[i]]);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  hash.Add(<span class="string">'8'</span>);</span><br><span class="line"></span><br><span class="line">  testCases[<span class="string">'27'</span>] = <span class="string">'8'</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; keys.length; i++) &#123;</span><br><span class="line">    t.is(hash.Get(keys[i]), testCases[keys[i]]);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  t.pass();</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<h1 id="将-Server-结合至-Group"><a href="#将-Server-结合至-Group" class="headerlink" title="将 Server 结合至 Group"></a>将 Server 结合至 Group</h1><p>现在我们 server 已经存在了，获取节点地址的 ConsistentHash 也有了，Group 也做好了，我们只需要将这 3 者组合起来，就可以完成第 3 章中未完成的流程了。</p>
+<p>首先我们先抽象出请求其他节点的 HTTP 客户端 PeerGetter 和 Server 提供访问其他节点的 HTTP 客户端 PeerPicker：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">interface</span> PeerPicker &#123;</span><br><span class="line">  pickPeer(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;PeerGetter&gt; | <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">interface</span> PeerGetter &#123;</span><br><span class="line">  <span class="keyword">get</span>(Group: <span class="built_in">string</span>, key: <span class="built_in">string</span>): <span class="built_in">any</span> | <span class="built_in">Promise</span>&lt;<span class="built_in">any</span>&gt; | <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后我们为我们的 http 实现：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> express, &#123; Express, Request, Response, NextFunction &#125; <span class="keyword">from</span> <span class="string">'express'</span>;</span><br><span class="line"><span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span>;</span><br><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; ConsistentHashMap &#125; <span class="keyword">from</span> <span class="string">'./consistenthash/consistenthash'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; getGroup &#125; <span class="keyword">from</span> <span class="string">'./aktcache'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; PeerGetter, PeerPicker &#125; <span class="keyword">from</span> <span class="string">'./peers'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> defaultBasePath = <span class="string">'/_aktcache/'</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 新增</span></span><br><span class="line"><span class="keyword">const</span> defaultReplicas = <span class="number">50</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> HTTPLOCK = <span class="keyword">new</span> AsyncLock();</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> HTTP <span class="keyword">implements</span> PeerPicker &#123;</span><br><span class="line">  self: <span class="built_in">string</span>; <span class="comment">// 记录自己的ip</span></span><br><span class="line">  port: <span class="built_in">number</span>; <span class="comment">// 记录自己的ip/端口</span></span><br><span class="line">  basePath: <span class="built_in">string</span>; <span class="comment">// 节点间通讯地址的前缀</span></span><br><span class="line">  server: Express;</span><br><span class="line">  peers: ConsistentHashMap;</span><br><span class="line">  httpGetters: Map&lt;<span class="built_in">string</span>, HttpGetter&gt;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">self: <span class="built_in">string</span>, port: <span class="built_in">number</span>, callback?: () =&gt; <span class="built_in">void</span></span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.self = self;</span><br><span class="line">    <span class="keyword">this</span>.port = port;</span><br><span class="line">    <span class="keyword">this</span>.basePath = defaultBasePath;</span><br><span class="line">    <span class="keyword">this</span>.server = express();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> router = express.Router();</span><br><span class="line"></span><br><span class="line">    router.get(<span class="string">`<span class="subst">$&#123;<span class="keyword">this</span>.basePath&#125;</span>*`</span>, <span class="keyword">async</span> (request: Request, response: Response) =&gt; &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(</span><br><span class="line">        <span class="string">`[Server <span class="subst">$&#123;<span class="keyword">this</span>.self + <span class="string">':'</span> + <span class="keyword">this</span>.port&#125;</span>] method: <span class="subst">$&#123;request.method&#125;</span>, path: <span class="subst">$&#123;request.path&#125;</span>`</span>,</span><br><span class="line">      );</span><br><span class="line"></span><br><span class="line">      <span class="keyword">const</span> parts = request.path.replace(<span class="keyword">this</span>.basePath, <span class="string">''</span>).split(<span class="string">'/'</span>);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (parts.length !== <span class="number">2</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> response.status(<span class="number">400</span>).send(&#123;</span><br><span class="line">          message: <span class="string">'path error'</span>,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">const</span> groupName = parts[<span class="number">0</span>];</span><br><span class="line">      <span class="keyword">const</span> key = parts[<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">const</span> group = <span class="keyword">await</span> getGroup(groupName);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (group === <span class="literal">null</span>) &#123;</span><br><span class="line">          <span class="keyword">return</span> response.status(<span class="number">404</span>).send(&#123;</span><br><span class="line">            message: <span class="string">`no such group: <span class="subst">$&#123;groupName&#125;</span>`</span>,</span><br><span class="line">          &#125;);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">const</span> value = <span class="keyword">await</span> group.get(key);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (value === <span class="literal">null</span>) &#123;</span><br><span class="line">          <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">            message: <span class="string">`server error`</span>,</span><br><span class="line">          &#125;);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        response.setHeader(<span class="string">'Content-Type'</span>, <span class="string">'application/octet-stream'</span>);</span><br><span class="line">        response.status(<span class="number">200</span>).send(&#123;</span><br><span class="line">          data: value,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(e);</span><br><span class="line">        <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">          message: <span class="string">`server error`</span>,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.server.use(express.json());</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.server.use(<span class="string">'/'</span>, router);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.server.listen(<span class="keyword">this</span>.port, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(<span class="string">`server run in <span class="subst">$&#123;<span class="keyword">this</span>.self + <span class="string">':'</span> + <span class="keyword">this</span>.port&#125;</span>`</span>);</span><br><span class="line">      callback &amp;&amp; callback();</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 新增</span></span><br><span class="line">  <span class="keyword">async</span> <span class="keyword">set</span>(...peers: <span class="built_in">string</span>[]) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">await</span> HTTPLOCK.acquire(<span class="string">`___HTTP___<span class="subst">$&#123;<span class="keyword">this</span>.self&#125;</span>___`</span>, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        <span class="keyword">this</span>.peers = <span class="keyword">new</span> ConsistentHashMap(defaultReplicas, <span class="literal">null</span>);</span><br><span class="line">        <span class="keyword">this</span>.peers.Add(...peers);</span><br><span class="line">        <span class="keyword">this</span>.httpGetters = <span class="keyword">new</span> Map&lt;<span class="built_in">string</span>, HttpGetter&gt;();</span><br><span class="line">        peers.forEach(<span class="function"><span class="params">peer</span> =&gt;</span> &#123;</span><br><span class="line">          <span class="keyword">this</span>.httpGetters.set(peer, <span class="keyword">new</span> HttpGetter(peer + <span class="keyword">this</span>.basePath));</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(err);</span><br><span class="line">      <span class="keyword">throw</span> err;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 新增</span></span><br><span class="line">  <span class="keyword">async</span> pickPeer(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> result: HttpGetter | <span class="literal">null</span> = <span class="keyword">await</span> HTTPLOCK.acquire(</span><br><span class="line">        <span class="string">`___HTTP___<span class="subst">$&#123;<span class="keyword">this</span>.self&#125;</span>___`</span>,</span><br><span class="line">        <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">          <span class="comment">// 获取真实结点</span></span><br><span class="line">          <span class="keyword">const</span> peer = <span class="keyword">this</span>.peers.Get(key);</span><br><span class="line">          <span class="keyword">if</span> (peer !== <span class="string">''</span> &amp;&amp; peer !== <span class="keyword">this</span>.self) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">this</span>.httpGetters[peer];</span><br><span class="line">          &#125;</span><br><span class="line">          <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">        &#125;,</span><br><span class="line">      );</span><br><span class="line">      <span class="keyword">return</span> result;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(err);</span><br><span class="line">      <span class="keyword">throw</span> err;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 新增</span></span><br><span class="line"><span class="keyword">class</span> HttpGetter <span class="keyword">implements</span> PeerGetter &#123;</span><br><span class="line">  baseUrl: <span class="built_in">string</span>;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">baseUrl: <span class="built_in">string</span></span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>.baseUrl = baseUrl;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> <span class="keyword">get</span>(group: <span class="built_in">string</span>, key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">const</span> url = <span class="string">`<span class="subst">$&#123;<span class="keyword">this</span>.baseUrl&#125;</span><span class="subst">$&#123;group&#125;</span>/<span class="subst">$&#123;key&#125;</span>`</span>;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">`GET: <span class="subst">$&#123;url&#125;</span>`</span>);</span><br><span class="line">    <span class="keyword">const</span> res = <span class="keyword">await</span> axios(&#123;</span><br><span class="line">      url,</span><br><span class="line">      method: <span class="string">'GET'</span>,</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (res.status !== <span class="number">200</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> res.data.data;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后我们只需要将我们的 Server 挂载到 Group 上：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Cache, newCache &#125; <span class="keyword">from</span> <span class="string">'./cache'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Entry &#125; <span class="keyword">from</span> <span class="string">'./lru/list'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; PeerGetter, PeerPicker &#125; <span class="keyword">from</span> <span class="string">'./peers'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> AKTCACHENAMEMAP: &#123; [propsName: <span class="built_in">string</span>]: Group &#125; = &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> GLOBALLOCK = <span class="keyword">new</span> AsyncLock();</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">interface</span> Getter &#123;</span><br><span class="line">  Get(key: <span class="built_in">string</span>): <span class="built_in">any</span> | <span class="built_in">Promise</span>&lt;<span class="built_in">any</span>&gt; | <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> Group &#123;</span><br><span class="line">  name: <span class="built_in">string</span>;</span><br><span class="line">  getter: Getter;</span><br><span class="line">  mainCache: Cache;</span><br><span class="line">  peers: PeerPicker;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">name: <span class="built_in">string</span>, getters: Getter, mainCache: Cache</span>) &#123;</span><br><span class="line">    name = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.getter = getters;</span><br><span class="line">    <span class="keyword">this</span>.mainCache = mainCache;</span><br><span class="line">    AKTCACHENAMEMAP[name] = <span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 新增</span></span><br><span class="line">  registerPeers(peers: PeerPicker) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!!<span class="keyword">this</span>.peers) &#123;</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> <span class="built_in">Error</span>(<span class="string">'egisterPeerPicker called more than once'</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">this</span>.peers = peers;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> <span class="keyword">get</span>(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;<span class="built_in">any</span> | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">if</span> (!key) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> v = <span class="keyword">await</span> <span class="keyword">this</span>.mainCache.get(key);</span><br><span class="line">      <span class="keyword">if</span> (v !== <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> v.value;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">const</span> loadv = <span class="keyword">await</span> <span class="keyword">this</span>.load(key);</span><br><span class="line">      <span class="keyword">return</span> loadv ? loadv.value : <span class="literal">null</span>;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> load(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;Entry | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 新增</span></span><br><span class="line">      <span class="keyword">if</span> (!<span class="keyword">this</span>.peers) &#123;</span><br><span class="line">        <span class="keyword">const</span> peer = <span class="keyword">await</span> <span class="keyword">this</span>.peers.pickPeer(key);</span><br><span class="line">        <span class="keyword">if</span> (peer) &#123;</span><br><span class="line">          <span class="keyword">const</span> value: Entry | <span class="literal">null</span> = <span class="keyword">await</span> <span class="keyword">this</span>.getFromPeer(peer, key);</span><br><span class="line">          <span class="keyword">if</span> (value) &#123;</span><br><span class="line">            <span class="keyword">return</span> value;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">await</span> <span class="keyword">this</span>.getLocall(key);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 新增</span></span><br><span class="line">  <span class="keyword">async</span> getFromPeer(peer: PeerGetter, key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">const</span> value = <span class="keyword">await</span> peer.get(<span class="keyword">this</span>.name, key);</span><br><span class="line">    <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> Entry(key, value);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> getLocall(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;Entry | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> value = <span class="keyword">await</span> <span class="keyword">this</span>.getter.Get(key);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.populateCache(key, value);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Entry(key, value);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">async</span> populateCache(key: <span class="built_in">string</span>, v: <span class="built_in">any</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.mainCache.add(key, v);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> newGroup = <span class="keyword">async</span> (name: <span class="built_in">string</span>, getters: Getter, cacheBytes: <span class="built_in">number</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> group = <span class="keyword">await</span> GLOBALLOCK.acquire(<span class="string">'___AKTCGROUP___NEW___'</span>, <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">if</span> (AKTCACHENAMEMAP[mapName]) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'this name is exist'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">const</span> cache = <span class="keyword">await</span> newCache(<span class="string">`__GROUP__CREATE__<span class="subst">$&#123;name&#125;</span>`</span>, cacheBytes);</span><br><span class="line">      <span class="keyword">if</span> (!cache) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'create cache failed'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Group(name, getters, cache);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> group;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> getGroup = <span class="keyword">async</span> (name: <span class="built_in">string</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> group = GLOBALLOCK.acquire(<span class="string">'___AKTCGROUP___GET___'</span>, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">return</span> AKTCACHENAMEMAP[mapName] || <span class="literal">null</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> group;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>现在我们已经实现了一个完整的 Group 了！</p>
+<p><img src="/image/groupcache/server_with_group.jpg" alt="server_with_group"></p>
+<p>接下来我们通过创建一个 client 和多个 Group 来完成最开头的架构吧！</p>
+<p><img src="/image/groupcache/mult_group.jpg" alt="mult_group"></p>
+<p>测试 server:</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; HTTP &#125; <span class="keyword">from</span> <span class="string">'./src/http'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; newGroup, Getter, Group &#125; <span class="keyword">from</span> <span class="string">'./src/aktcache'</span>;</span><br><span class="line"><span class="keyword">import</span> express, &#123; Express, Request, Response, NextFunction &#125; <span class="keyword">from</span> <span class="string">'express'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; spawn &#125; <span class="keyword">from</span> <span class="string">'child_process'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> db = &#123;</span><br><span class="line">  akt: <span class="string">'123'</span>,</span><br><span class="line">  akita: <span class="string">'321'</span>,</span><br><span class="line">  akitasummer: <span class="string">'213'</span>,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> createGroup = <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> getter: Getter = &#123;</span><br><span class="line">    Get(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">      <span class="keyword">const</span> v = db[key];</span><br><span class="line">      <span class="keyword">if</span> (v) &#123;</span><br><span class="line">        <span class="keyword">return</span> v;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">await</span> newGroup(<span class="string">'num'</span>, getter, <span class="number">2048</span>);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> startCacheServer = <span class="keyword">async</span> (addr: <span class="built_in">string</span>, addrs: <span class="built_in">string</span>[], akt: Group) =&gt; &#123;</span><br><span class="line">  <span class="keyword">let</span> peers: HTTP;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">await</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function"><span class="params">resolve</span> =&gt;</span> &#123;</span><br><span class="line">      peers = <span class="keyword">new</span> HTTP(<span class="string">'localhost'</span>, <span class="built_in">Number</span>(addr), <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">`aktcache is running at <span class="subst">$&#123;addr&#125;</span>`</span>);</span><br><span class="line">        resolve(<span class="literal">null</span>);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">await</span> peers.set(...addrs);</span><br><span class="line">    akt.registerPeers(peers);</span><br><span class="line">  &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">    <span class="keyword">throw</span> err;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> startAPIServer = <span class="keyword">async</span> (apiAddr: <span class="built_in">string</span>, akt: Group) =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> server = express();</span><br><span class="line">  <span class="keyword">const</span> router = express.Router();</span><br><span class="line">  router.get(<span class="string">'/api'</span>, <span class="keyword">async</span> (request: Request, response: Response) =&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> key = request.query.key;</span><br><span class="line">      <span class="keyword">const</span> value = <span class="keyword">await</span> akt.get(key.toString());</span><br><span class="line">      <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">        <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">          message: <span class="string">`server error`</span>,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">      response.setHeader(<span class="string">'Content-Type'</span>, <span class="string">'application/octet-stream'</span>);</span><br><span class="line">      response.status(<span class="number">200</span>).send(&#123;</span><br><span class="line">        data: value,</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e);</span><br><span class="line">      <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">        message: <span class="string">`server error`</span>,</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  server.use(express.json());</span><br><span class="line"></span><br><span class="line">  server.use(<span class="string">'/'</span>, router);</span><br><span class="line"></span><br><span class="line">  server.listen(apiAddr, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">`server run in <span class="subst">$&#123;apiAddr&#125;</span>`</span>);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> apiAddr = <span class="string">'9999'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> addrMap = &#123;</span><br><span class="line">  <span class="string">'8001'</span>: <span class="string">'http://localhost:8001'</span>,</span><br><span class="line">  <span class="string">'8002'</span>: <span class="string">'http://localhost:8002'</span>,</span><br><span class="line">  <span class="string">'8003'</span>: <span class="string">'http://localhost:8003'</span>,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">(<span class="keyword">async</span> (apiAddr: <span class="built_in">string</span>, addrMap: &#123; [propsName: <span class="built_in">string</span>]: <span class="built_in">string</span> &#125;) =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> addrs = <span class="built_in">Object</span>.keys(addrMap);</span><br><span class="line">  <span class="keyword">const</span> akt = <span class="keyword">await</span> createGroup();</span><br><span class="line"></span><br><span class="line">  addrs.forEach(<span class="function"><span class="params">addr</span> =&gt;</span> &#123;</span><br><span class="line">    spawn(<span class="string">'node'</span>, [<span class="string">'-port'</span>, addr]);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  startCacheServer(apiAddr, addrs, akt);</span><br><span class="line">&#125;)(apiAddr, addrMap);</span><br></pre></td></tr></table></figure>
+<p>测试 client:</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; argv &#125; <span class="keyword">from</span> <span class="string">'process'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; HTTP &#125; <span class="keyword">from</span> <span class="string">'./src/http'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; newGroup, Getter, Group &#125; <span class="keyword">from</span> <span class="string">'./src/aktcache'</span>;</span><br><span class="line"><span class="keyword">import</span> express, &#123; Express, Request, Response, NextFunction &#125; <span class="keyword">from</span> <span class="string">'express'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> db = &#123;</span><br><span class="line">  akt: <span class="string">'123'</span>,</span><br><span class="line">  akita: <span class="string">'321'</span>,</span><br><span class="line">  akitasummer: <span class="string">'213'</span>,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> createGroup = <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> getter: Getter = &#123;</span><br><span class="line">    Get(key: <span class="built_in">string</span>) &#123;</span><br><span class="line">      <span class="keyword">const</span> v = db[key];</span><br><span class="line">      <span class="keyword">if</span> (v) &#123;</span><br><span class="line">        <span class="keyword">return</span> v;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">await</span> newGroup(<span class="string">'num'</span>, getter, <span class="number">2048</span>);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> startAPIServer = <span class="keyword">async</span> (apiAddr: <span class="built_in">string</span>, akt: Group) =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> server = express();</span><br><span class="line">  <span class="keyword">const</span> router = express.Router();</span><br><span class="line">  router.get(<span class="string">'/api'</span>, <span class="keyword">async</span> (request: Request, response: Response) =&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> key = request.query.key;</span><br><span class="line">      <span class="keyword">const</span> value = <span class="keyword">await</span> akt.get(key.toString());</span><br><span class="line">      <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">        <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">          message: <span class="string">`server error`</span>,</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">      response.setHeader(<span class="string">'Content-Type'</span>, <span class="string">'application/octet-stream'</span>);</span><br><span class="line">      response.status(<span class="number">200</span>).send(&#123;</span><br><span class="line">        data: value,</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e);</span><br><span class="line">      <span class="keyword">return</span> response.status(<span class="number">500</span>).send(&#123;</span><br><span class="line">        message: <span class="string">`server error`</span>,</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> post = argv[<span class="number">3</span>];</span><br><span class="line"></span><br><span class="line">(<span class="keyword">async</span> (post: <span class="built_in">string</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">const</span> akt = <span class="keyword">await</span> createGroup();</span><br><span class="line">  startAPIServer(post, akt);</span><br><span class="line">&#125;)(post);</span><br></pre></td></tr></table></figure>
+<h1 id="SingleFlight-防止缓存击穿"><a href="#SingleFlight-防止缓存击穿" class="headerlink" title="SingleFlight: 防止缓存击穿"></a>SingleFlight: 防止缓存击穿</h1><blockquote>
+<p>缓存雪崩：缓存在同一时刻全部失效，造成瞬时 DB 请求量大、压力骤增，引起雪崩。缓存雪崩通常因为缓存服务器宕机、缓存的 key 设置了相同的过期时间等引起。</p>
+</blockquote>
+<blockquote>
+<p>缓存击穿：一个存在的 key，在缓存过期的一刻，同时有大量的请求，这些请求都会击穿到 DB ，造成瞬时 DB 请求量大、压力骤增。</p>
+</blockquote>
+<blockquote>
+<p>缓存穿透：查询一个不存在的数据，因为不存在则不会写到缓存中，所以每次都会去请求 DB，如果瞬间流量过大，穿透到 DB，导致宕机。</p>
+</blockquote>
+<p>现在我们的项目已经基本完成了，但是我们需要考虑缓存击穿的问题，现在我们的 server 会将每次请求都发送：</p>
+<p><img src="/image/groupcache/mult_req.jpg" alt="mult_req"></p>
+<p>这时候我们需要加个锁，当一次请求完成后，将所有相同 key 的请求都返回：</p>
+<p><img src="/image/groupcache/single_req.jpg" alt="single_req"></p>
+<p>我们首先来实现 singleflight 部分：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> Call &#123;</span><br><span class="line">  wg: AsyncLock;</span><br><span class="line">  val: <span class="built_in">any</span>;</span><br><span class="line">  name: <span class="built_in">string</span>;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">key: <span class="built_in">string</span></span>) &#123;</span><br><span class="line">    key = <span class="string">`__CALL__<span class="subst">$&#123;key&#125;</span>`</span>;</span><br><span class="line">    <span class="keyword">this</span>.name = key;</span><br><span class="line">    <span class="keyword">this</span>.wg = <span class="keyword">new</span> AsyncLock();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> SingleFlight &#123;</span><br><span class="line">  mu: AsyncLock;</span><br><span class="line">  name: <span class="built_in">string</span>;</span><br><span class="line">  map: Map&lt;<span class="built_in">string</span>, Call&gt;;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">name: <span class="built_in">string</span></span>) &#123;</span><br><span class="line">    name = <span class="string">`__CALL__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.mu = <span class="keyword">new</span> AsyncLock();</span><br><span class="line">    <span class="keyword">this</span>.map = <span class="keyword">new</span> Map&lt;<span class="built_in">string</span>, Call&gt;();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> Do(key: <span class="built_in">string</span>, fn: <span class="function"><span class="params">()</span> =&gt;</span> <span class="built_in">Promise</span>&lt;<span class="built_in">any</span> | <span class="literal">null</span>&gt;) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 确保只有唯一一个能修改map</span></span><br><span class="line">      <span class="keyword">const</span> call: Call = <span class="keyword">await</span> <span class="keyword">this</span>.mu.acquire(<span class="keyword">this</span>.name, <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span>.map.get(key)) &#123;</span><br><span class="line">          <span class="keyword">return</span> <span class="keyword">this</span>.map.get(key); <span class="comment">// 如果请求正在进行中，则等待</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">const</span> call = <span class="keyword">new</span> Call(key);</span><br><span class="line">        <span class="keyword">this</span>.map[key] = call; <span class="comment">// 表明 key 已经有对应的请求在处理</span></span><br><span class="line">        <span class="keyword">return</span> call;</span><br><span class="line">      &#125;);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">const</span> result = <span class="keyword">await</span> call.wg.acquire(call.name, <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">          <span class="keyword">if</span> (!call.val) &#123;</span><br><span class="line">            <span class="comment">// 没有值，调用fn</span></span><br><span class="line">            <span class="keyword">const</span> val = <span class="keyword">await</span> fn();</span><br><span class="line">            call.val = val;</span><br><span class="line">            <span class="keyword">return</span> val;</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> call.val; <span class="comment">// 存在值，获取</span></span><br><span class="line">          &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">          <span class="keyword">throw</span> err;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      <span class="keyword">this</span>.map.delete(key); <span class="comment">// 更新map</span></span><br><span class="line">      <span class="keyword">return</span> result;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">      <span class="keyword">throw</span> err;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>集成：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> AsyncLock <span class="keyword">from</span> <span class="string">'async-lock'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Cache, newCache &#125; <span class="keyword">from</span> <span class="string">'./cache'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Entry &#125; <span class="keyword">from</span> <span class="string">'./lru/list'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; PeerGetter, PeerPicker &#125; <span class="keyword">from</span> <span class="string">'./peers'</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; SingleFlight &#125; <span class="keyword">from</span> <span class="string">'./singleflight/singleflight'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> AKTCACHENAMEMAP: &#123; [propsName: <span class="built_in">string</span>]: Group &#125; = &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> GLOBALLOCK = <span class="keyword">new</span> AsyncLock();</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">interface</span> Getter &#123;</span><br><span class="line">  Get(key: <span class="built_in">string</span>): <span class="built_in">any</span> | <span class="built_in">Promise</span>&lt;<span class="built_in">any</span>&gt; | <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> Group &#123;</span><br><span class="line">  name: <span class="built_in">string</span>;</span><br><span class="line">  getter: Getter;</span><br><span class="line">  mainCache: Cache;</span><br><span class="line">  peers: PeerPicker;</span><br><span class="line">  <span class="comment">// 新增</span></span><br><span class="line">  loader: SingleFlight;</span><br><span class="line">  <span class="keyword">constructor</span>(<span class="params">name: <span class="built_in">string</span>, getters: Getter, mainCache: Cache</span>) &#123;</span><br><span class="line">    name = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.getter = getters;</span><br><span class="line">    <span class="keyword">this</span>.mainCache = mainCache;</span><br><span class="line">    <span class="comment">// 新增</span></span><br><span class="line">    <span class="keyword">this</span>.loader = <span class="keyword">new</span> SingleFlight(name);</span><br><span class="line">    AKTCACHENAMEMAP[name] = <span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  registerPeers(peers: PeerPicker) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!!<span class="keyword">this</span>.peers) &#123;</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> <span class="built_in">Error</span>(<span class="string">'egisterPeerPicker called more than once'</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">this</span>.peers = peers;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> <span class="keyword">get</span>(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;<span class="built_in">any</span> | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">if</span> (!key) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> v = <span class="keyword">await</span> <span class="keyword">this</span>.mainCache.get(key);</span><br><span class="line">      <span class="keyword">if</span> (v !== <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> v.value;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">const</span> loadv = <span class="keyword">await</span> <span class="keyword">this</span>.load(key);</span><br><span class="line">      <span class="keyword">return</span> loadv ? loadv.value : <span class="literal">null</span>;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> load(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;Entry | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 新增</span></span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">await</span> <span class="keyword">this</span>.loader.Do(key, <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="keyword">this</span>.peers) &#123;</span><br><span class="line">          <span class="keyword">const</span> peer = <span class="keyword">await</span> <span class="keyword">this</span>.peers.pickPeer(key);</span><br><span class="line">          <span class="keyword">if</span> (peer) &#123;</span><br><span class="line">            <span class="keyword">const</span> value: Entry | <span class="literal">null</span> = <span class="keyword">await</span> <span class="keyword">this</span>.getFromPeer(peer, key);</span><br><span class="line">            <span class="keyword">if</span> (value) &#123;</span><br><span class="line">              <span class="keyword">return</span> value;</span><br><span class="line">            &#125;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">await</span> <span class="keyword">this</span>.getLocall(key);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> getFromPeer(peer: PeerGetter, key: <span class="built_in">string</span>) &#123;</span><br><span class="line">    <span class="keyword">const</span> value = <span class="keyword">await</span> peer.get(<span class="keyword">this</span>.name, key);</span><br><span class="line">    <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> Entry(key, value);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> getLocall(key: <span class="built_in">string</span>): <span class="built_in">Promise</span>&lt;Entry | <span class="literal">null</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> value = <span class="keyword">await</span> <span class="keyword">this</span>.getter.Get(key);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (!value) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.populateCache(key, value);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Entry(key, value);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">async</span> populateCache(key: <span class="built_in">string</span>, v: <span class="built_in">any</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">await</span> <span class="keyword">this</span>.mainCache.add(key, v);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> newGroup = <span class="keyword">async</span> (name: <span class="built_in">string</span>, getters: Getter, cacheBytes: <span class="built_in">number</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> group = <span class="keyword">await</span> GLOBALLOCK.acquire(<span class="string">'___AKTCGROUP___NEW___'</span>, <span class="keyword">async</span> () =&gt; &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">if</span> (AKTCACHENAMEMAP[mapName]) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'this name is exist'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">const</span> cache = <span class="keyword">await</span> newCache(<span class="string">`__GROUP__CREATE__<span class="subst">$&#123;name&#125;</span>`</span>, cacheBytes);</span><br><span class="line">      <span class="keyword">if</span> (!cache) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="built_in">Error</span>(<span class="string">'create cache failed'</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> Group(name, getters, cache);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> group;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> getGroup = <span class="keyword">async</span> (name: <span class="built_in">string</span>) =&gt; &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> group = GLOBALLOCK.acquire(<span class="string">'___AKTCGROUP___GET___'</span>, <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">const</span> mapName = <span class="string">`__AKTCACHE__<span class="subst">$&#123;name&#125;</span>`</span>;</span><br><span class="line">      <span class="keyword">return</span> AKTCACHENAMEMAP[mapName] || <span class="literal">null</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> group;</span><br><span class="line">  &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(e.toString());</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h1 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h1><p>非常感谢你能阅读到这里，如果你能从我这个实现 demo 中学到一些知识和技术，那我是非常开心的。由于我的语文并不是很好，导致文章中存在大量的代码，而解释性文字比较少，如果你有任何不懂的部分，可以评论或者私聊联系我，我会尽我所能的帮助你解决你的困惑。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/NodeJs/" rel="tag"># NodeJs</a>
+          
+            <a href="/tags/缓存/" rel="tag"># 缓存</a>
+          
+            <a href="/tags/分布式/" rel="tag"># 分布式</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/12/04/ReactNative原生模块开发与调用/" rel="next" title="React Native原生模块开发与调用">
+                <i class="fa fa-chevron-left"></i> React Native原生模块开发与调用
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2021/07/31/Golang 单元测试极速入门/" rel="prev" title="Golang 单元测试极速入门">
+                Golang 单元测试极速入门 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">12</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#序言"><span class="nav-number">1.</span> <span class="nav-text">序言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#LRU-缓存淘汰策略"><span class="nav-number">2.</span> <span class="nav-text">LRU: 缓存淘汰策略</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Cache-并发缓存"><span class="nav-number">3.</span> <span class="nav-text">Cache: 并发缓存</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Group-主体结构"><span class="nav-number">4.</span> <span class="nav-text">Group: 主体结构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Server：HTTP-服务端"><span class="nav-number">5.</span> <span class="nav-text">Server：HTTP 服务端</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ConsistentHash-一致性哈希值"><span class="nav-number">6.</span> <span class="nav-text">ConsistentHash: 一致性哈希值</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#将-Server-结合至-Group"><span class="nav-number">7.</span> <span class="nav-text">将 Server 结合至 Group</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#SingleFlight-防止缓存击穿"><span class="nav-number">8.</span> <span class="nav-text">SingleFlight: 防止缓存击穿</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#写在最后"><span class="nav-number">9.</span> <span class="nav-text">写在最后</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
