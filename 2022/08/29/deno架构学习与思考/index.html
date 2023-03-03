@@ -117,10 +117,10 @@
 <meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/interface.png">
 <meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/deno_packages.png">
 <meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/isolates_vs_wasm.png">
-<meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/deno_runtime.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/deno_runtime.jpg">
 <meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/serverless.jpg">
 <meta property="og:image" content="https://akitasummer.github.io/image/deno-architecture/cross_platform.png">
-<meta property="og:updated_time" content="2023-03-03T09:30:54.000Z">
+<meta property="og:updated_time" content="2023-03-03T14:19:41.965Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="deno架构学习与思考">
 <meta name="twitter:description" content="前置知识 v8: V8 是一个由 Google 开发的开源 JavaScript 引擎，用于 Google Chrome 及 Chromium 中。 v8 isolate: 运行 js 代码的安全沙箱（受控，受限，chrome 中每一个 tab 为一个 isolate）    v8 bindings: v8 内部提供的允许 js 调用原生代码的能力 4. Future: rust 中的异步方案，类">
@@ -401,7 +401,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2023-03-03 17:30:54" itemprop="dateModified" datetime="2023-03-03T17:30:54+08:00">2023-03-03</time>
+                <time title="修改时间：2023-03-03 22:19:41" itemprop="dateModified" datetime="2023-03-03T22:19:41+08:00">2023-03-03</time>
               
             
           </span>
@@ -511,7 +511,7 @@
 <h2 id="接口的设计"><a href="#接口的设计" class="headerlink" title="接口的设计"></a>接口的设计</h2><p>好的接口的设计会提升你的系统的稳定性，安全性<br><img src="/image/deno-architecture/interface.png" alt="interface"></p>
 <h2 id="延迟决策"><a href="#延迟决策" class="headerlink" title="延迟决策"></a>延迟决策</h2><p>获取需求时需要考虑潜在需求，考虑架构时需要考虑进来，抽象你的代码，让其能应对后续需求的变迁<br>🌰：<br>1.0 TCP server -&gt; sync call<br>2.0 TCP+ TLS -&gt; async call<br>3.0 TCP + TLS + thrift -&gt; steam<br>4.0 QUIC -&gt; ?</p>
 <h2 id="可复用的架构资源"><a href="#可复用的架构资源" class="headerlink" title="可复用的架构资源"></a>可复用的架构资源</h2><p><img src="/image/deno-architecture/deno_packages.png" alt="deno-packages"><br>rusty_v8: 可用于处理 js，作为 js 解释器<br>deno_core：拥有 rust 异步时间循环的低级 js runtime，可高效快捷的扩展 js 能力<br>deno_runtime: 可自定义的 deno runtime</p>
-<h2 id="deno-可能的未来"><a href="#deno-可能的未来" class="headerlink" title="deno 可能的未来"></a>deno 可能的未来</h2><p>serverless framework<br><img src="/image/deno-architecture/isolates_vs_wasm.png" alt="isolates_vs_wasm"><br><img src="/image/deno-architecture/deno_runtime.png" alt="deno_runtime"><br><img src="/image/deno-architecture/serverless.jpg" alt="serverless"><br>Cross platform framwork<br><img src="/image/deno-architecture/cross_platform.png" alt="cross_platform"><br>继承 node<br>deno 官方接下来 3 个月内将会让 deno 兼容 npm 生态，以及努力使 deno 成为最快的 js runtime<br><a href="https://deno.com/blog/changes" target="_blank" rel="noopener">https://deno.com/blog/changes</a></p>
+<h2 id="deno-可能的未来"><a href="#deno-可能的未来" class="headerlink" title="deno 可能的未来"></a>deno 可能的未来</h2><p>serverless framework<br><img src="/image/deno-architecture/isolates_vs_wasm.png" alt="isolates_vs_wasm"><br><img src="/image/deno-architecture/deno_runtime.jpg" alt="deno_runtime"><br><img src="/image/deno-architecture/serverless.jpg" alt="serverless"><br>Cross platform framwork<br><img src="/image/deno-architecture/cross_platform.png" alt="cross_platform"><br>继承 node<br>deno 官方接下来 3 个月内将会让 deno 兼容 npm 生态，以及努力使 deno 成为最快的 js runtime<br><a href="https://deno.com/blog/changes" target="_blank" rel="noopener">https://deno.com/blog/changes</a></p>
 
       
     </div>
