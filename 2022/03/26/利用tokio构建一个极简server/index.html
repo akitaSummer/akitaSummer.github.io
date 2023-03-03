@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Measure first. Optimize. Measure again.  前言上一次我们使用 tokio 实现了一个简易 redis，其中我们是使用的 tcp 流，说道 tcp 流，就不得不说我们最常用的 http 了，这次会实现一个极简 http_server，它包含了：  并发数限制 路由解析 解析 Request 生成 Response 读取预先配置  设计图：  ConfigHt">
+<meta name="keywords" content="rust,tcp,http">
+<meta property="og:type" content="article">
+<meta property="og:title" content="利用tokio构建一个极简server">
+<meta property="og:url" content="https://akitaSummer.github.io/2022/03/26/利用tokio构建一个极简server/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="Measure first. Optimize. Measure again.  前言上一次我们使用 tokio 实现了一个简易 redis，其中我们是使用的 tcp 流，说道 tcp 流，就不得不说我们最常用的 http 了，这次会实现一个极简 http_server，它包含了：  并发数限制 路由解析 解析 Request 生成 Response 读取预先配置  设计图：  ConfigHt">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-server/architecture.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-server/route.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-server/request.png">
+<meta property="og:updated_time" content="2023-03-03T09:03:37.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="利用tokio构建一个极简server">
+<meta name="twitter:description" content="Measure first. Optimize. Measure again.  前言上一次我们使用 tokio 实现了一个简易 redis，其中我们是使用的 tcp 流，说道 tcp 流，就不得不说我们最常用的 http 了，这次会实现一个极简 http_server，它包含了：  并发数限制 路由解析 解析 Request 生成 Response 读取预先配置  设计图：  ConfigHt">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/mini-server/architecture.jpg">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2022/03/26/利用tokio构建一个极简server/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>利用tokio构建一个极简server | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2022/03/26/利用tokio构建一个极简server/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">利用tokio构建一个极简server
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2022-03-26 09:22:33" itemprop="dateCreated datePublished" datetime="2022-03-26T09:22:33+08:00">2022-03-26</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-03-03 17:03:37" itemprop="dateModified" datetime="2023-03-03T17:03:37+08:00">2023-03-03</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2022/03/26/利用tokio构建一个极简server/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2022/03/26/利用tokio构建一个极简server/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>Measure first. Optimize. Measure again.</p>
+</blockquote>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>上一次我们使用 tokio 实现了一个简易 redis，其中我们是使用的 tcp 流，说道 tcp 流，就不得不说我们最常用的 http 了，这次会实现一个极简 http_server，它包含了：</p>
+<ul>
+<li>并发数限制</li>
+<li>路由解析</li>
+<li>解析 Request</li>
+<li>生成 Response</li>
+<li>读取预先配置</li>
+</ul>
+<p>设计图：</p>
+<p><img src="/image/mini-server/architecture.jpg" alt="architecture"></p>
+<h1 id="Config"><a href="#Config" class="headerlink" title="Config"></a>Config</h1><p>Http 中有很多配置，比如 status 和 mime_type，如果写在源码里，我们每次都需要更新源码，这样会非常麻烦，但是我们可以放置于 json 中，在运行时动态去读取</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> once_cell::sync::OnceCell;</span><br><span class="line"><span class="keyword">use</span> serde_json::<span class="built_in">Result</span>;</span><br><span class="line"><span class="keyword">use</span> std::collections::HashMap;</span><br><span class="line"><span class="keyword">use</span> std::io::<span class="built_in">Result</span> <span class="keyword">as</span> IOResult;</span><br><span class="line"><span class="keyword">use</span> std::&#123;env, fs&#125;;</span><br><span class="line"><span class="keyword">use</span> tracing::&#123;debug, error, info&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Clone, Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Status</span></span>(<span class="keyword">pub</span> <span class="built_in">String</span>, <span class="keyword">pub</span> <span class="built_in">String</span>);</span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">MimeType</span></span>(<span class="keyword">pub</span> <span class="built_in">String</span>, <span class="keyword">pub</span> <span class="built_in">String</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 全局共享单个数据</span></span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">static</span> GLOBAL_STATUSES: OnceCell&lt;HashMap&lt;<span class="built_in">String</span>, Status&gt;&gt; = OnceCell::new();</span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">static</span> GLOBAL_MIME_CFG: OnceCell&lt;HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;&gt; = OnceCell::new();</span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">static</span> OCTECT_STREAM: &amp;<span class="symbol">'static</span> <span class="built_in">str</span> = <span class="string">"application/octet-stream"</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 读取文件</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">read_file_to_string_rel_to_runtime_dir</span></span>(file_path: &amp;<span class="built_in">str</span>) -&gt; IOResult&lt;<span class="built_in">String</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> runtime_dir = env::current_dir().unwrap();</span><br><span class="line">    runtime_dir.push(file_path);</span><br><span class="line">    <span class="keyword">return</span> fs::read_to_string(runtime_dir.to_str().unwrap());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// status,使用serde_json解析json后，将其赋值与全局变量上</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">init_default_http_status</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> status_config = HashMap::&lt;<span class="built_in">String</span>, Status&gt;::new();</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Ok</span>(status_cfg_json) = read_file_to_string_rel_to_runtime_dir(<span class="string">"src/config/status.json"</span>) &#123;</span><br><span class="line">        <span class="keyword">let</span> map: <span class="built_in">Result</span>&lt;HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;&gt; = serde_json::from_str(status_cfg_json.as_str());</span><br><span class="line">        <span class="keyword">match</span> map &#123;</span><br><span class="line">            <span class="literal">Ok</span>(map) =&gt; &#123;</span><br><span class="line">                map.iter().for_each(|(k, v)| &#123;</span><br><span class="line">                    status_config.insert(k.clone(), Status(k.clone(), v.clone()));</span><br><span class="line">                &#125;);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="literal">Err</span>(_) =&gt; &#123;</span><br><span class="line">                error!(<span class="string">"failed to load status.json"</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    GLOBAL_STATUSES.set(status_config).unwrap();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// mime_type,使用serde_json解析json后，将其赋值与全局变量上</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">init_default_mime_type</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> entries = HashMap::&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;::new();</span><br><span class="line">    <span class="keyword">let</span> content_wrapper = read_file_to_string_rel_to_runtime_dir(<span class="string">"src/config/mime.json"</span>);</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Ok</span>(mime_cfg_json) = content_wrapper &#123;</span><br><span class="line">        <span class="keyword">let</span> json: HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt; = serde_json::from_str(mime_cfg_json.as_str()).unwrap();</span><br><span class="line">        <span class="keyword">for</span> (k, v) <span class="keyword">in</span> json.iter() &#123;</span><br><span class="line">            v.split_whitespace()</span><br><span class="line">                .filter(|&amp;tp| !tp.is_empty())</span><br><span class="line">                .for_each(|tp| &#123;</span><br><span class="line">                    entries.insert(tp.to_string(), k.to_string());</span><br><span class="line">                &#125;)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    info!(<span class="string">"begin loading mime config"</span>);</span><br><span class="line">    GLOBAL_MIME_CFG.set(entries).unwrap();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">init</span></span>() &#123;</span><br><span class="line">    init_default_mime_type();</span><br><span class="line">    init_default_http_status();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>share 主要是对 store 实现 mutex 锁及过期更新功能</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> bytes::Bytes;</span><br><span class="line"><span class="keyword">use</span> std::collections::&#123;BTreeMap, HashMap&#125;;</span><br><span class="line"><span class="keyword">use</span> std::sync::&#123;Arc, Mutex&#125;;</span><br><span class="line"><span class="keyword">use</span> tokio::sync::Notify;</span><br><span class="line"><span class="keyword">use</span> tokio::time::&#123;<span class="keyword">self</span>, Duration, Instant&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Shared</span></span> &#123;</span><br><span class="line">    state: Mutex&lt;State&gt;,</span><br><span class="line">    <span class="comment">// 检查过期值或关闭信号</span></span><br><span class="line">    background_task: Notify,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Shared &#123;</span><br><span class="line">    <span class="comment">// 清除过期键</span></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">purge_expired_keys</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Option</span>&lt;Instant&gt; &#123;</span><br><span class="line">        <span class="comment">// 获取state原始值</span></span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> state = &amp;<span class="keyword">mut</span> *(<span class="keyword">self</span>.state.lock().unwrap());</span><br><span class="line">        <span class="keyword">if</span> state.shutdown &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">None</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 当前时间</span></span><br><span class="line">        <span class="keyword">let</span> now = Instant::now();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">while</span> <span class="keyword">let</span> <span class="literal">Some</span>(((expired_time, id), key)) = state.expirations.iter().next() &#123;</span><br><span class="line">            <span class="keyword">if</span> *expired_time &gt; now &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">Some</span>(*expired_time);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            state.entries.remove(key);</span><br><span class="line">            state.expirations.remove(&amp;(*expired_time, *id));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="literal">None</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">is_shutdown</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">bool</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.state.lock().unwrap().shutdown</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Route"><a href="#Route" class="headerlink" title="Route"></a>Route</h1><p>route 其实可以细化为个部分：</p>
+<ul>
+<li>路由分配</li>
+<li>解析 request</li>
+<li>执行业务逻辑</li>
+<li>返回 response</li>
+</ul>
+<p><img src="/image/mini-server/route.jpg" alt="route"></p>
+<h2 id="Request"><a href="#Request" class="headerlink" title="Request"></a>Request</h2><p>request 主要作用是将 tcp 流进行解析转化为我们 rust 的数据结构，以便能被业务逻辑所运行<br>http 报文结构如下</p>
+<p><img src="/image/mini-server/request.png" alt="request"><br>第一行是请求方法，然后 header 会连续的以行出现，header 和 body 中有一空行作为分割识别<br>其实我们做的就是将 tcp 中的数据取出，然后逐行去解析，具体实现如下：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::collections::HashMap;</span><br><span class="line"><span class="keyword">use</span> tokio::io::&#123;AsyncBufReadExt, AsyncReadExt, BufReader&#125;;</span><br><span class="line"><span class="keyword">use</span> tokio::net::TcpStream;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Clone)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">Method</span></span> &#123;</span><br><span class="line">    GET,</span><br><span class="line">    POST,</span><br><span class="line">    PUT,</span><br><span class="line">    DELETE,</span><br><span class="line">    UNKNOWN,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// http请求方法</span></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">From</span>&lt;&amp;<span class="built_in">str</span>&gt; <span class="keyword">for</span> Method &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">from</span></span>(method: &amp;<span class="built_in">str</span>) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> lowercase_method = method.to_lowercase();</span><br><span class="line">        <span class="keyword">let</span> res = lowercase_method.as_str();</span><br><span class="line">        <span class="keyword">match</span> res &#123;</span><br><span class="line">            <span class="string">"get"</span> =&gt; Method::GET,</span><br><span class="line">            <span class="string">"post"</span> =&gt; Method::POST,</span><br><span class="line">            <span class="string">"put"</span> =&gt; Method::PUT,</span><br><span class="line">            <span class="string">"delete"</span> =&gt; Method::DELETE,</span><br><span class="line">            _ =&gt; Method::UNKNOWN,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// http版本</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Clone)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">Version</span></span> &#123;</span><br><span class="line">    HTTP1_1,</span><br><span class="line">    HTTP2_0,</span><br><span class="line">    UNKNOWN,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Clone)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">Resource</span></span> &#123;</span><br><span class="line">    Path(<span class="built_in">String</span>),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">From</span>&lt;&amp;<span class="built_in">str</span>&gt; <span class="keyword">for</span> Version &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">from</span></span>(ver: &amp;<span class="built_in">str</span>) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> ver_in_lowercase = ver.to_lowercase();</span><br><span class="line">        <span class="keyword">match</span> ver_in_lowercase.as_str() &#123;</span><br><span class="line">            <span class="string">"http/1.1"</span> =&gt; Version::HTTP1_1,</span><br><span class="line">            <span class="string">"http/2.0"</span> =&gt; Version::HTTP2_0,</span><br><span class="line">            _ =&gt; Version::UNKNOWN,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// request 结构</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">HttpRequest</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> method: Method,</span><br><span class="line">    <span class="keyword">pub</span> version: Version,</span><br><span class="line">    <span class="keyword">pub</span> resource: Resource,</span><br><span class="line">    <span class="keyword">pub</span> headers: <span class="built_in">Option</span>&lt;HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;&gt;,</span><br><span class="line">    <span class="keyword">pub</span> msg_body: <span class="built_in">Option</span>&lt;<span class="built_in">String</span>&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">Default</span> <span class="keyword">for</span> HttpRequest &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">default</span></span>() -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">Self</span> &#123;</span><br><span class="line">            method: Method::GET,</span><br><span class="line">            version: Version::HTTP1_1,</span><br><span class="line">            resource: Resource::Path(<span class="built_in">String</span>::from(<span class="string">"/"</span>)),</span><br><span class="line">            headers: <span class="literal">None</span>,</span><br><span class="line">            msg_body: <span class="literal">None</span>,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> HttpRequest &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">from</span></span>(stream: &amp;<span class="keyword">mut</span> TcpStream) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> reader = BufReader::&lt;&amp;<span class="keyword">mut</span> TcpStream&gt;::new(stream);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> request = HttpRequest::default();</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> headers = HashMap::&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;::new();</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> content_len = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> is_req_line = <span class="literal">true</span>;</span><br><span class="line">        <span class="comment">// 读取header</span></span><br><span class="line">        <span class="keyword">loop</span> &#123;</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> line = <span class="built_in">String</span>::from(<span class="string">""</span>);</span><br><span class="line">            reader.read_line(&amp;<span class="keyword">mut</span> line).<span class="keyword">await</span>.unwrap();</span><br><span class="line">            <span class="comment">// 第一行</span></span><br><span class="line">            <span class="keyword">if</span> is_req_line &#123;</span><br><span class="line">                <span class="keyword">if</span> line.is_empty() &amp;&amp; is_req_line &#123;</span><br><span class="line">                    <span class="keyword">return</span> HttpRequest::default();</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// 解析请求信息</span></span><br><span class="line">                <span class="keyword">let</span> (method, resource, version) = process_req_line(line.as_str());</span><br><span class="line">                request.method = method;</span><br><span class="line">                request.resource = resource;</span><br><span class="line">                request.version = version;</span><br><span class="line">                is_req_line = <span class="literal">false</span>;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> line.contains(<span class="string">":"</span>) &#123;</span><br><span class="line">                <span class="comment">// 解析header</span></span><br><span class="line">                <span class="keyword">let</span> (key, value) = process_request_header(line.as_str());</span><br><span class="line">                headers.insert(key.clone(), value.clone().trim().to_string());</span><br><span class="line">                <span class="keyword">if</span> key == <span class="string">"Content-Length"</span> &#123;</span><br><span class="line">                    content_len = value.trim().parse::&lt;<span class="built_in">usize</span>&gt;().unwrap();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> line == <span class="built_in">String</span>::from(<span class="string">"\r\n"</span>) &#123;</span><br><span class="line">                <span class="comment">// header 与 body之间存在空行，header结束</span></span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        request.headers = <span class="literal">Some</span>(headers);</span><br><span class="line">        <span class="keyword">if</span> content_len &gt; <span class="number">0</span> &#123;</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> buf = <span class="built_in">vec!</span>[<span class="number">0</span> <span class="keyword">as</span> <span class="built_in">u8</span>; content_len];</span><br><span class="line">            <span class="keyword">let</span> buf_slice = buf.as_mut_slice();</span><br><span class="line">            <span class="comment">// 读取请求体，注意，这里不能在使用stream进行读取，否则会一直卡在这里，要继续用reader进行读取.</span></span><br><span class="line">            <span class="comment">// BufReader::read(&amp;mut reader, buf_slice).await.unwrap();</span></span><br><span class="line">            reader.read(buf_slice).<span class="keyword">await</span>.unwrap();</span><br><span class="line">            request.msg_body = <span class="literal">Some</span>(<span class="built_in">String</span>::from_utf8_lossy(buf_slice).to_string());</span><br><span class="line">        &#125;</span><br><span class="line">        request</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">From</span>&lt;<span class="built_in">String</span>&gt; <span class="keyword">for</span> HttpRequest &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">from</span></span>(diagram: <span class="built_in">String</span>) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> request = HttpRequest::default();</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> headers = HashMap::&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;::new();</span><br><span class="line">        <span class="keyword">for</span> line <span class="keyword">in</span> diagram.lines() &#123;</span><br><span class="line">            <span class="keyword">if</span> line.contains(<span class="string">"HTTP"</span>) &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">"request line is: &#123;&#125;"</span>, line);</span><br><span class="line">                <span class="keyword">let</span> (method, resource, version) = process_req_line(line);</span><br><span class="line">                request.method = method;</span><br><span class="line">                request.resource = resource;</span><br><span class="line">                request.version = version;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> line.contains(<span class="string">":"</span>) &#123;</span><br><span class="line">                <span class="keyword">let</span> (key, value) = process_request_header(line);</span><br><span class="line">                headers.insert(key, value);</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> line.is_empty() &#123;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                request.msg_body = <span class="literal">Some</span>(line.to_string());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        request.headers = <span class="literal">Some</span>(headers);</span><br><span class="line">        request</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析header</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">process_request_header</span></span>(line: &amp;<span class="built_in">str</span>) -&gt; (<span class="built_in">String</span>, <span class="built_in">String</span>) &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> seg_iter = line.split(<span class="string">":"</span>);</span><br><span class="line">    (</span><br><span class="line">        seg_iter.next().unwrap().into(),</span><br><span class="line">        seg_iter.next().unwrap().into(),</span><br><span class="line">    )</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析首行</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">process_req_line</span></span>(line: &amp;<span class="built_in">str</span>) -&gt; (Method, Resource, Version) &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> segments = line.split_whitespace();</span><br><span class="line">    (</span><br><span class="line">        segments.next().unwrap().into(),</span><br><span class="line">        Resource::Path(segments.next().unwrap().to_string()),</span><br><span class="line">        segments.next().unwrap().into(),</span><br><span class="line">    )</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#[test]</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">test_method_match</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> m: Method = <span class="string">"GET"</span>.into();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(Method::GET, m);</span><br><span class="line">    <span class="keyword">let</span> m: Method = <span class="string">"posT"</span>.into();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(Method::POST, m);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[test]</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">test_version_match</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> v: Version = <span class="string">"HTTP/1.1"</span>.into();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(v, Version::HTTP1_1);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> v: Version = <span class="string">"Http/2.0"</span>.into();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(v, Version::HTTP2_0);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> v: Version = <span class="string">"HTTP/1.3"</span>.into();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(v, Version::UNKNOWN);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[test]</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">test_request_parse</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> req = <span class="string">"GET /index.js HTTP/1.1\r\nHost: localhost\r\nContent-Type: text/html\r\n\r\nxxxx"</span>;</span><br><span class="line">    <span class="keyword">let</span> actual_request: HttpRequest = <span class="built_in">String</span>::from(req).into();</span><br><span class="line">    <span class="keyword">let</span> expected_request = HttpRequest &#123;</span><br><span class="line">        method: Method::GET,</span><br><span class="line">        resource: Resource::Path(<span class="string">"/index.js"</span>.to_string()),</span><br><span class="line">        version: Version::HTTP1_1,</span><br><span class="line">        headers: &#123;</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> h = HashMap::&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;::new();</span><br><span class="line">            h.insert(<span class="string">"Host"</span>.to_string(), <span class="string">" localhost"</span>.to_string());</span><br><span class="line">            h.insert(<span class="string">"Content-Type"</span>.to_string(), <span class="string">" text/html"</span>.to_string());</span><br><span class="line">            <span class="literal">Some</span>(h)</span><br><span class="line">        &#125;,</span><br><span class="line">        msg_body: <span class="literal">Some</span>(<span class="built_in">String</span>::from(<span class="string">"xxxx"</span>)),</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="built_in">assert_eq!</span>(expected_request, actual_request);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Response"><a href="#Response" class="headerlink" title="Response"></a>Response</h2><p>response 主要做的就是将业务逻辑处理好的数据生成对应的 response 并写入 tcp 流中：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::collections::HashMap;</span><br><span class="line"><span class="comment">// 获取设置</span></span><br><span class="line"><span class="keyword">use</span> crate::config::&#123;Status, GLOBAL_MIME_CFG&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// response数据结构</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Clone)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">HttpResponse</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> version: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> status_code: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> status_text: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> headers: <span class="built_in">Option</span>&lt;HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;&gt;,</span><br><span class="line">    <span class="keyword">pub</span> resp_body: <span class="built_in">Option</span>&lt;<span class="built_in">String</span>&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">Default</span> <span class="keyword">for</span> HttpResponse &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">default</span></span>() -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">Self</span> &#123;</span><br><span class="line">            version: <span class="built_in">String</span>::from(<span class="string">"HTTP/1.1"</span>),</span><br><span class="line">            status_code: <span class="built_in">String</span>::from(<span class="string">"200"</span>),</span><br><span class="line">            status_text: <span class="string">"OK"</span>.to_string(),</span><br><span class="line">            headers: <span class="literal">Some</span>(HashMap::new()),</span><br><span class="line">            resp_body: <span class="literal">None</span>,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> HttpResponse &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">set_status</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, status: Status) &#123;</span><br><span class="line">        <span class="keyword">let</span> Status(status_code, status_text) = status;</span><br><span class="line">        <span class="keyword">self</span>.status_code = status_code;</span><br><span class="line">        <span class="keyword">self</span>.status_text = status_text;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">set_headers</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, headers: HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;) &#123;</span><br><span class="line">        <span class="keyword">self</span>.headers = <span class="literal">Some</span>(headers);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">set_body</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, body: <span class="built_in">String</span>) &#123;</span><br><span class="line">        <span class="keyword">self</span>.resp_body = <span class="literal">Some</span>(body);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">add_header</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, key: <span class="built_in">String</span>, value: <span class="built_in">String</span>) &#123;</span><br><span class="line">        <span class="keyword">let</span> headers = <span class="keyword">self</span>.headers.as_mut().unwrap();</span><br><span class="line">        headers.insert(key, value);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(</span><br><span class="line">        version: <span class="built_in">String</span>,</span><br><span class="line">        status_code: <span class="built_in">String</span>,</span><br><span class="line">        headers: <span class="built_in">Option</span>&lt;HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;&gt;,</span><br><span class="line">        resp_body: <span class="built_in">Option</span>&lt;<span class="built_in">String</span>&gt;,</span><br><span class="line">    ) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> response = HttpResponse::default();</span><br><span class="line">        response.version = version.to_string();</span><br><span class="line">        <span class="keyword">if</span> status_code != <span class="string">"200"</span> &#123;</span><br><span class="line">            response.status_code = status_code.to_string();</span><br><span class="line">            <span class="keyword">let</span> code = status_code;</span><br><span class="line">            <span class="keyword">let</span> mime_config = &amp;GLOBAL_MIME_CFG.get();</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> status_text = <span class="built_in">String</span>::from(<span class="string">""</span>);</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(config) = mime_config &#123;</span><br><span class="line">                <span class="keyword">let</span> desc = <span class="keyword">match</span> config.get(&amp;*code.to_string()) &#123;</span><br><span class="line">                    <span class="literal">Some</span>(status_desc) =&gt; status_desc,</span><br><span class="line">                    <span class="literal">None</span> =&gt; <span class="string">"Unknown Status"</span>,</span><br><span class="line">                &#125;;</span><br><span class="line">                status_text.push_str(desc);</span><br><span class="line">            &#125;;</span><br><span class="line">            response.status_text = status_text;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(_) = headers &#123;</span><br><span class="line">            response.headers = headers;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(_) = resp_body &#123;</span><br><span class="line">            response.resp_body = resp_body;</span><br><span class="line">        &#125;</span><br><span class="line">        response</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">get_serialized_headers</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> result = <span class="built_in">String</span>::from(<span class="string">""</span>);</span><br><span class="line">        <span class="keyword">match</span> &amp;<span class="keyword">self</span>.headers &#123;</span><br><span class="line">            <span class="literal">Some</span>(headers) =&gt; &#123;</span><br><span class="line">                <span class="keyword">let</span> <span class="keyword">mut</span> keys = headers.keys().collect::&lt;<span class="built_in">Vec</span>&lt;&amp;<span class="built_in">String</span>&gt;&gt;();</span><br><span class="line">                keys.sort();</span><br><span class="line">                keys.iter()</span><br><span class="line">                    .for_each(|&amp;k| result = <span class="built_in">format!</span>(<span class="string">"&#123;&#125;&#123;&#125;: &#123;&#125;\r\n"</span>, result, k, headers[k]));</span><br><span class="line">                <span class="keyword">let</span> content_len = <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(body) = &amp;<span class="keyword">self</span>.resp_body &#123;</span><br><span class="line">                    body.len()</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="number">0</span></span><br><span class="line">                &#125;;</span><br><span class="line">                result = <span class="built_in">format!</span>(<span class="string">"&#123;&#125;&#123;&#125;: &#123;&#125;\r\n"</span>, result, <span class="string">"Content-Length"</span>, content_len);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="literal">None</span> =&gt; &#123;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">        result</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">get_serialized_body</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="keyword">match</span> &amp;<span class="keyword">self</span>.resp_body &#123;</span><br><span class="line">            <span class="literal">Some</span>(body) =&gt; body.to_string(),</span><br><span class="line">            <span class="literal">None</span> =&gt; <span class="built_in">String</span>::from(<span class="string">""</span>),</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">Into</span>&lt;<span class="built_in">String</span>&gt; <span class="keyword">for</span> HttpResponse &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">into</span></span>(<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="built_in">format!</span>(</span><br><span class="line">            <span class="string">"&#123;&#125; &#123;&#125; &#123;&#125;\r\n&#123;&#125;\r\n&#123;&#125;"</span>,</span><br><span class="line">            &amp;<span class="keyword">self</span>.version,</span><br><span class="line">            &amp;<span class="keyword">self</span>.status_code,</span><br><span class="line">            &amp;<span class="keyword">self</span>.status_text,</span><br><span class="line">            &amp;<span class="keyword">self</span>.get_serialized_headers(),</span><br><span class="line">            &amp;<span class="keyword">self</span>.get_serialized_body(),</span><br><span class="line">        )</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#[test]</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">test_response_tostring</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> expected_resp_string = <span class="string">"HTTP/1.1 200 OK\r\n\</span></span><br><span class="line"><span class="string">    Content-Type: text/html\r\n\</span></span><br><span class="line"><span class="string">    Cookie: name=akita\r\n\</span></span><br><span class="line"><span class="string">    Host: localhost:8080\r\n\</span></span><br><span class="line"><span class="string">    Content-Length: 4\r\n\</span></span><br><span class="line"><span class="string">    \r\n\</span></span><br><span class="line"><span class="string">    yyyy"</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> headers = HashMap::&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;::new();</span><br><span class="line">    headers.insert(<span class="string">"Content-Type"</span>.into(), <span class="string">"text/html"</span>.into());</span><br><span class="line">    headers.insert(<span class="string">"Cookie"</span>.into(), <span class="string">"name=akita"</span>.into());</span><br><span class="line">    headers.insert(<span class="string">"Host"</span>.into(), <span class="string">"localhost:8080"</span>.into());</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> resp_body = <span class="built_in">String</span>::from(<span class="string">"yyyy"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> response = HttpResponse::new(</span><br><span class="line">        <span class="string">"HTTP/1.1"</span>.to_string(),</span><br><span class="line">        <span class="string">"200"</span>.to_string(),</span><br><span class="line">        <span class="literal">Some</span>(headers),</span><br><span class="line">        <span class="literal">Some</span>(resp_body),</span><br><span class="line">    );</span><br><span class="line">    <span class="keyword">let</span> actual_resp_string: <span class="built_in">String</span> = response.into();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(expected_resp_string, actual_resp_string);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Route-1"><a href="#Route-1" class="headerlink" title="Route"></a>Route</h2><p>有了 request 和 response 后，就可以编写我们的 route 了</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> handler;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::http::&#123;</span><br><span class="line">    request::&#123;HttpRequest, Method, Resource&#125;,</span><br><span class="line">    response::HttpResponse,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 业务逻辑handler</span></span><br><span class="line"><span class="keyword">use</span> crate::router::handler::&#123;ApiHandler, HttpHandler, StaticResHandler&#125;;</span><br><span class="line"><span class="comment">// 静态文件夹</span></span><br><span class="line"><span class="keyword">const</span> STATIC_RES: &amp;<span class="built_in">str</span> = <span class="string">"/staticres"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Router</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Router &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">route</span></span>(request: &amp;HttpRequest) -&gt; HttpResponse &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> resp = HttpResponse::default(); <span class="comment">// 生成response</span></span><br><span class="line">        <span class="keyword">match</span> request.method &#123; <span class="comment">// 对request进行处理</span></span><br><span class="line">            Method::GET =&gt; &#123;</span><br><span class="line">                <span class="keyword">let</span> Resource::Path(path) = &amp;request.resource;</span><br><span class="line">                <span class="keyword">if</span> path.starts_with(STATIC_RES) &#123;</span><br><span class="line">                    <span class="keyword">let</span> handler_wrapper = get_request_handler(request); <span class="comment">// 获取业务逻辑的handler</span></span><br><span class="line">                    <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(handler) = handler_wrapper &#123;</span><br><span class="line">                        resp = handler.handle(request); <span class="comment">// 从handler中得到response</span></span><br><span class="line">                        <span class="keyword">return</span> resp;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                resp.set_body(<span class="string">"this is api response."</span>.into());</span><br><span class="line">            &#125;</span><br><span class="line">            _ =&gt; &#123;</span><br><span class="line">                resp.set_body(<span class="string">"hello world"</span>.into());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        resp</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> STATIC_RES_HANDLER: StaticResHandler = StaticResHandler &#123;&#125;;</span><br><span class="line"><span class="keyword">const</span> API_RES_HANDLER: ApiHandler = ApiHandler &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取handler</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">get_request_handler</span></span>(req: &amp;HttpRequest) -&gt; <span class="built_in">Option</span>&lt;<span class="built_in">Box</span>&lt;&amp;<span class="keyword">dyn</span> HttpHandler&gt;&gt; &#123;</span><br><span class="line">    <span class="keyword">match</span> req.method &#123;</span><br><span class="line">        Method::GET =&gt; <span class="literal">Some</span>(<span class="built_in">Box</span>::new(&amp;STATIC_RES_HANDLER)),</span><br><span class="line">        _ =&gt; <span class="literal">Some</span>(<span class="built_in">Box</span>::new(&amp;API_RES_HANDLER)),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>业务逻辑：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::&#123;env, fs&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::config::&#123;MimeType, GLOBAL_MIME_CFG, GLOBAL_STATUSES, OCTECT_STREAM&#125;;</span><br><span class="line"><span class="keyword">use</span> crate::http::&#123;</span><br><span class="line">    request::&#123;HttpRequest, Resource&#125;,</span><br><span class="line">    response::HttpResponse,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> crate::router::STATIC_RES;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">trait</span> <span class="title">HttpHandler</span></span> &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">handle</span></span>(&amp;<span class="keyword">self</span>, request: &amp;HttpRequest) -&gt; HttpResponse;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Default)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">StaticResHandler</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 读个文件</span></span><br><span class="line"><span class="keyword">impl</span> HttpHandler <span class="keyword">for</span> StaticResHandler &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">handle</span></span>(&amp;<span class="keyword">self</span>, request: &amp;HttpRequest) -&gt; HttpResponse &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> resp = HttpResponse::default();</span><br><span class="line">        <span class="keyword">let</span> Resource::Path(<span class="keyword">ref</span> path) = request.resource;</span><br><span class="line">        <span class="keyword">let</span> real_path = &amp;path[STATIC_RES.len()..];</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> runtime_dir = env::current_dir().unwrap();</span><br><span class="line">        runtime_dir.push(<span class="string">"public"</span>);</span><br><span class="line">        real_path</span><br><span class="line">            .split(<span class="string">"/"</span>)</span><br><span class="line">            .into_iter()</span><br><span class="line">            .for_each(|s| runtime_dir.push(s));</span><br><span class="line">        <span class="keyword">let</span> res_content = fs::read_to_string(runtime_dir.to_str().unwrap());</span><br><span class="line">        <span class="keyword">match</span> res_content &#123;</span><br><span class="line">            <span class="literal">Ok</span>(content) =&gt; &#123;</span><br><span class="line">                resp.resp_body = <span class="literal">Some</span>(content);</span><br><span class="line">            &#125;</span><br><span class="line">            _ =&gt; &#123;</span><br><span class="line">                <span class="keyword">let</span> <span class="keyword">mut</span> path_buf = env::current_dir().unwrap();</span><br><span class="line">                path_buf.push(<span class="string">"public/404.html"</span>);</span><br><span class="line">                <span class="keyword">let</span> not_found_page_path = path_buf.to_str().unwrap();</span><br><span class="line">                resp.resp_body = <span class="literal">Some</span>(fs::read_to_string(not_found_page_path).unwrap());</span><br><span class="line">                resp.add_header(<span class="string">"Content-Type"</span>.into(), <span class="string">"text/html"</span>.into());</span><br><span class="line">                <span class="keyword">let</span> statuses = GLOBAL_STATUSES.get().unwrap();</span><br><span class="line">                <span class="keyword">let</span> status = statuses.get(<span class="string">"404"</span>).unwrap();</span><br><span class="line">                resp.set_status(status.clone());</span><br><span class="line">                <span class="keyword">return</span> resp;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">let</span> content_type = <span class="keyword">match</span> path.split(<span class="string">"/"</span>).last() &#123;</span><br><span class="line">            <span class="literal">Some</span>(res_name) =&gt; <span class="keyword">match</span> res_name.split(<span class="string">"."</span>).last() &#123;</span><br><span class="line">                <span class="literal">Some</span>(ext) =&gt; GLOBAL_MIME_CFG.get().map(|entries| &#123;</span><br><span class="line">                    <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(tp) = entries.get(ext) &#123;</span><br><span class="line">                        tp.clone()</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        OCTECT_STREAM.into()</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;),</span><br><span class="line">                <span class="literal">None</span> =&gt; <span class="literal">Some</span>(OCTECT_STREAM.into()),</span><br><span class="line">            &#125;</span><br><span class="line">            .unwrap(),</span><br><span class="line">            _ =&gt; OCTECT_STREAM.into(),</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        resp.add_header(<span class="string">"Content-Type"</span>.into(), content_type);</span><br><span class="line"></span><br><span class="line">        resp</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Default)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">ApiHandler</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> HttpHandler <span class="keyword">for</span> ApiHandler &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">handle</span></span>(&amp;<span class="keyword">self</span>, request: &amp;HttpRequest) -&gt; HttpResponse &#123;</span><br><span class="line">        todo!(<span class="string">"to implement"</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Handler"><a href="#Handler" class="headerlink" title="Handler"></a>Handler</h1><p>handler 的作用是用来处理请求，他在多线程下是处理请求的最小单位：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> request;</span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> response;</span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> shutdown;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> std::future::Future;</span><br><span class="line"><span class="keyword">use</span> std::sync::Arc;</span><br><span class="line"><span class="keyword">use</span> tokio::io::AsyncWriteExt;</span><br><span class="line"><span class="keyword">use</span> tokio::net::&#123;TcpListener, TcpStream&#125;;</span><br><span class="line"><span class="keyword">use</span> tokio::sync::&#123;broadcast, mpsc, Semaphore&#125;;</span><br><span class="line"><span class="keyword">use</span> tokio::time::&#123;<span class="keyword">self</span>, Duration&#125;;</span><br><span class="line"><span class="keyword">use</span> tracing::&#123;debug, error, info&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::config::init;</span><br><span class="line"><span class="keyword">use</span> crate::http::request::HttpRequest;</span><br><span class="line"><span class="keyword">use</span> crate::http::shutdown::Shutdown;</span><br><span class="line"><span class="keyword">use</span> crate::router::Router;</span><br><span class="line"><span class="keyword">use</span> crate::types::<span class="built_in">Result</span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Handler</span></span> &#123;</span><br><span class="line">    socket: TcpStream,</span><br><span class="line">    limit_connections: Arc&lt;Semaphore&gt;,</span><br><span class="line">    shutdown: Shutdown, <span class="comment">// 监听ctrl+c进行退出，下面实现</span></span><br><span class="line">    _shutdown_complete: mpsc::Sender&lt;()&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Handler &#123;</span><br><span class="line">    <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; <span class="built_in">Result</span>&lt;()&gt; &#123;</span><br><span class="line">        <span class="keyword">while</span> !<span class="keyword">self</span>.shutdown.is_shutdown() &#123;</span><br><span class="line">            <span class="keyword">let</span> request = HttpRequest::from(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>.socket).<span class="keyword">await</span>; <span class="comment">// 从tcp流中获取request</span></span><br><span class="line">            <span class="built_in">println!</span>(<span class="string">"request is: &#123;:?&#125;"</span>, request.resource);</span><br><span class="line">            <span class="keyword">let</span> resp = Router::route(&amp;request).<span class="keyword">await</span>; <span class="comment">// 进行处理</span></span><br><span class="line">            <span class="keyword">let</span> resp_str: <span class="built_in">String</span> = resp.into();</span><br><span class="line">            <span class="keyword">self</span>.socket</span><br><span class="line">                .write(resp_str.as_bytes() <span class="keyword">as</span> &amp;[<span class="built_in">u8</span>])</span><br><span class="line">                .<span class="keyword">await</span></span><br><span class="line">                .unwrap(); <span class="comment">// 写入tcp流返回</span></span><br><span class="line">            <span class="keyword">self</span>.socket.flush().<span class="keyword">await</span>.unwrap();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">Drop</span> <span class="keyword">for</span> Handler &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">drop</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) &#123;</span><br><span class="line">        <span class="keyword">self</span>.limit_connections.add_permits(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="优雅退出"><a href="#优雅退出" class="headerlink" title="优雅退出"></a>优雅退出</h1><p>上文中的 shutdown 是一个常见的批量杀死进程的方法，之前的文章中也有写到，这里就不细说了：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> tokio::sync::broadcast;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Shutdown</span></span> &#123;</span><br><span class="line">    shutdown: <span class="built_in">bool</span>,</span><br><span class="line">    <span class="comment">// 监听关闭信息</span></span><br><span class="line">    notify: broadcast::Receiver&lt;()&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Shutdown &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(notify: broadcast::Receiver&lt;()&gt;) -&gt; Shutdown &#123;</span><br><span class="line">        Shutdown &#123;</span><br><span class="line">            shutdown: <span class="literal">false</span>,</span><br><span class="line">            notify,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">is_shutdown</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">bool</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.shutdown</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">recv</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">self</span>.shutdown &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 接受关闭信号</span></span><br><span class="line">        <span class="keyword">let</span> _ = <span class="keyword">self</span>.notify.recv().<span class="keyword">await</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">self</span>.shutdown = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="HttpServer"><a href="#HttpServer" class="headerlink" title="HttpServer"></a>HttpServer</h1><p>最后，创建一个 tcplistener 作为 HttpServer，它将负责管理 handler：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> request;</span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> response;</span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">mod</span> shutdown;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> std::future::Future;</span><br><span class="line"><span class="keyword">use</span> std::sync::Arc;</span><br><span class="line"><span class="keyword">use</span> tokio::io::AsyncWriteExt;</span><br><span class="line"><span class="keyword">use</span> tokio::net::&#123;TcpListener, TcpStream&#125;;</span><br><span class="line"><span class="keyword">use</span> tokio::sync::&#123;broadcast, mpsc, Semaphore&#125;;</span><br><span class="line"><span class="keyword">use</span> tokio::time::&#123;<span class="keyword">self</span>, Duration&#125;;</span><br><span class="line"><span class="keyword">use</span> tracing::&#123;debug, error, info&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::config::init;</span><br><span class="line"><span class="keyword">use</span> crate::http::request::HttpRequest;</span><br><span class="line"><span class="keyword">use</span> crate::http::shutdown::Shutdown;</span><br><span class="line"><span class="keyword">use</span> crate::router::Router;</span><br><span class="line"><span class="keyword">use</span> crate::types::<span class="built_in">Result</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">HttpServer</span></span> &#123;</span><br><span class="line">    listener: TcpListener,</span><br><span class="line">    limit_connections: Arc&lt;Semaphore&gt;, <span class="comment">// 限制并发数</span></span><br><span class="line">    notify_shutdown: broadcast::Sender&lt;()&gt;, <span class="comment">// 广播终止信息</span></span><br><span class="line">    shutdown_complete_rx: mpsc::Receiver&lt;()&gt;,</span><br><span class="line">    shutdown_complete_tx: mpsc::Sender&lt;()&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> HttpServer &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Result</span>&lt;()&gt; &#123;</span><br><span class="line">        <span class="keyword">loop</span> &#123;</span><br><span class="line">        <span class="comment">// 达到线程限制数目会在此阻塞</span></span><br><span class="line">            <span class="keyword">self</span>.limit_connections.acquire().<span class="keyword">await</span>.unwrap().forget();</span><br><span class="line">            <span class="comment">// 获取tcp流</span></span><br><span class="line">            <span class="keyword">let</span> socket = <span class="keyword">self</span>.accept().<span class="keyword">await</span>?;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> handler = Handler &#123;</span><br><span class="line">                socket: socket,</span><br><span class="line">                limit_connections: <span class="keyword">self</span>.limit_connections.clone(),</span><br><span class="line">                shutdown: Shutdown::new(<span class="keyword">self</span>.notify_shutdown.subscribe()),</span><br><span class="line">                _shutdown_complete: <span class="keyword">self</span>.shutdown_complete_tx.clone(),</span><br><span class="line">            &#125;;</span><br><span class="line"></span><br><span class="line">            tokio::spawn(<span class="keyword">async</span> <span class="keyword">move</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Err</span>(err) = handler.run().<span class="keyword">await</span> &#123;</span><br><span class="line">                    error!(cause = ?err, <span class="string">"connection error"</span>);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 多线程获取tcp流</span></span><br><span class="line">    <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">accept</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Result</span>&lt;TcpStream&gt; &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> try_time = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">loop</span> &#123;</span><br><span class="line">            <span class="keyword">match</span> <span class="keyword">self</span>.listener.accept().<span class="keyword">await</span> &#123;</span><br><span class="line">                <span class="literal">Ok</span>((socket, _)) =&gt; <span class="keyword">return</span> <span class="literal">Ok</span>(socket),</span><br><span class="line">                <span class="literal">Err</span>(err) =&gt; &#123;</span><br><span class="line">                    <span class="keyword">if</span> try_time &gt; <span class="number">64</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">Err</span>(err.into());</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            time::sleep(Duration::from_secs(try_time)).<span class="keyword">await</span>;</span><br><span class="line"></span><br><span class="line">            try_time *= <span class="number">2</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 运行服务</span></span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>&lt;T: Future&gt;(listener: TcpListener, shutdown: T) &#123;</span><br><span class="line">    init();</span><br><span class="line">    <span class="keyword">let</span> (notify_shutdown, _) = broadcast::channel(<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">let</span> (shutdown_complete_tx, shutdown_complete_rx) = mpsc::channel(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> server = HttpServer &#123;</span><br><span class="line">        listener,</span><br><span class="line">        limit_connections: Arc::new(Semaphore::new(<span class="number">500</span>)),</span><br><span class="line">        notify_shutdown,</span><br><span class="line">        shutdown_complete_tx,</span><br><span class="line">        shutdown_complete_rx,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    tokio::<span class="built_in">select!</span> &#123;</span><br><span class="line">        res = server.run() =&gt; &#123;</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Err</span>(err) = res &#123;</span><br><span class="line">                error!(cause = %err, <span class="string">"failed to accept"</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        _ = shutdown =&gt; &#123;</span><br><span class="line">            info!(<span class="string">"shutting down"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">drop</span>(server.notify_shutdown);</span><br><span class="line">    <span class="built_in">drop</span>(server.shutdown_complete_tx);</span><br><span class="line">    <span class="keyword">let</span> _ = server.shutdown_complete_rx.recv().<span class="keyword">await</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Handler</span></span> &#123;</span><br><span class="line">    socket: TcpStream,</span><br><span class="line">    limit_connections: Arc&lt;Semaphore&gt;,</span><br><span class="line">    shutdown: Shutdown, <span class="comment">// 监听ctrl+c进行退出，下面实现</span></span><br><span class="line">    _shutdown_complete: mpsc::Sender&lt;()&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Handler &#123;</span><br><span class="line">    <span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; <span class="built_in">Result</span>&lt;()&gt; &#123;</span><br><span class="line">        <span class="keyword">while</span> !<span class="keyword">self</span>.shutdown.is_shutdown() &#123;</span><br><span class="line">            <span class="keyword">let</span> request = HttpRequest::from(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>.socket).<span class="keyword">await</span>; <span class="comment">// 从tcp流中获取request</span></span><br><span class="line">            <span class="built_in">println!</span>(<span class="string">"request is: &#123;:?&#125;"</span>, request.resource);</span><br><span class="line">            <span class="keyword">let</span> resp = Router::route(&amp;request).<span class="keyword">await</span>; <span class="comment">// 进行处理</span></span><br><span class="line">            <span class="keyword">let</span> resp_str: <span class="built_in">String</span> = resp.into();</span><br><span class="line">            <span class="keyword">self</span>.socket</span><br><span class="line">                .write(resp_str.as_bytes() <span class="keyword">as</span> &amp;[<span class="built_in">u8</span>])</span><br><span class="line">                .<span class="keyword">await</span></span><br><span class="line">                .unwrap(); <span class="comment">// 写入tcp流返回</span></span><br><span class="line">            <span class="keyword">self</span>.socket.flush().<span class="keyword">await</span>.unwrap();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">Drop</span> <span class="keyword">for</span> Handler &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">drop</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) &#123;</span><br><span class="line">        <span class="keyword">self</span>.limit_connections.add_permits(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Run"><a href="#Run" class="headerlink" title="Run!"></a>Run!</h1><p>在我们的 main.rs 中让你的项目跑起来吧！</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">mod</span> config;</span><br><span class="line"><span class="keyword">mod</span> http;</span><br><span class="line"><span class="keyword">mod</span> router;</span><br><span class="line"><span class="keyword">mod</span> types;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> tokio::net::TcpListener;</span><br><span class="line"><span class="keyword">use</span> tokio::signal;</span><br><span class="line"><span class="keyword">use</span> tokio::spawn;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[tokio::main]</span></span><br><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> listener = TcpListener::bind(<span class="string">"localhost:8888"</span>).<span class="keyword">await</span>.unwrap();</span><br><span class="line"></span><br><span class="line">    spawn(<span class="keyword">async</span> <span class="keyword">move</span> &#123;</span><br><span class="line">        http::run(listener, signal::ctrl_c()).<span class="keyword">await</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol start="7">
+<li>最后<br>这个 demo 是一个极简的 httpserver，他有很多不足，但是他的核心是解析 tcp 流中的 http 请求并处理返回，这也是很多 http 库的最核心的部分，这个 demo 并不复杂，主要是熟悉 rust 的编程习惯以及 tokio 的使用，如果想要了解更复杂的 http_server，可以看一下我之前的 Gin 简易实现。</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/rust/" rel="tag"># rust</a>
+          
+            <a href="/tags/tcp/" rel="tag"># tcp</a>
+          
+            <a href="/tags/http/" rel="tag"># http</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2022/02/01/XORM简易实现/" rel="next" title="XORM 简易实现">
+                <i class="fa fa-chevron-left"></i> XORM 简易实现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2022/05/17/200行代码实现极简deno/" rel="prev" title="200行代码实现极简deno">
+                200行代码实现极简deno <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">29</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Config"><span class="nav-number">2.</span> <span class="nav-text">Config</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Route"><span class="nav-number">3.</span> <span class="nav-text">Route</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Request"><span class="nav-number">3.1.</span> <span class="nav-text">Request</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Response"><span class="nav-number">3.2.</span> <span class="nav-text">Response</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Route-1"><span class="nav-number">3.3.</span> <span class="nav-text">Route</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Handler"><span class="nav-number">4.</span> <span class="nav-text">Handler</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#优雅退出"><span class="nav-number">5.</span> <span class="nav-text">优雅退出</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HttpServer"><span class="nav-number">6.</span> <span class="nav-text">HttpServer</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Run"><span class="nav-number">7.</span> <span class="nav-text">Run!</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

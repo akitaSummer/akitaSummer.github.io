@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="优良设计创造价值的速度，快于其增加成本的速度。  前言面向对象编程把所有实体看成对象（object），关系型数据库则是采用实体之间的关系（relation）连接数据。很早就有人提出，关系也可以用对象表达，这样的话，就能使用面向对象编程，来操作关系型数据库。  简单说，ORM 就是通过实例对象的语法，完成关系型数据库的操作的技术，是”对象-关系映射”（Object/Relational Mappi">
+<meta name="keywords" content="golang,orm,数据库">
+<meta property="og:type" content="article">
+<meta property="og:title" content="XORM 简易实现">
+<meta property="og:url" content="https://akitaSummer.github.io/2022/02/01/XORM简易实现/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="优良设计创造价值的速度，快于其增加成本的速度。  前言面向对象编程把所有实体看成对象（object），关系型数据库则是采用实体之间的关系（relation）连接数据。很早就有人提出，关系也可以用对象表达，这样的话，就能使用面向对象编程，来操作关系型数据库。  简单说，ORM 就是通过实例对象的语法，完成关系型数据库的操作的技术，是”对象-关系映射”（Object/Relational Mappi">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/xorm/orm.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/xorm/architecture.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/xorm/session.jpg">
+<meta property="og:updated_time" content="2023-03-03T08:50:28.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="XORM 简易实现">
+<meta name="twitter:description" content="优良设计创造价值的速度，快于其增加成本的速度。  前言面向对象编程把所有实体看成对象（object），关系型数据库则是采用实体之间的关系（relation）连接数据。很早就有人提出，关系也可以用对象表达，这样的话，就能使用面向对象编程，来操作关系型数据库。  简单说，ORM 就是通过实例对象的语法，完成关系型数据库的操作的技术，是”对象-关系映射”（Object/Relational Mappi">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/xorm/orm.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2022/02/01/XORM简易实现/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>XORM 简易实现 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2022/02/01/XORM简易实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">XORM 简易实现
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2022-02-01 11:37:35" itemprop="dateCreated datePublished" datetime="2022-02-01T11:37:35+08:00">2022-02-01</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-03-03 16:50:28" itemprop="dateModified" datetime="2023-03-03T16:50:28+08:00">2023-03-03</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2022/02/01/XORM简易实现/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2022/02/01/XORM简易实现/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>优良设计创造价值的速度，快于其增加成本的速度。</p>
+</blockquote>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>面向对象编程把所有实体看成对象（object），关系型数据库则是采用实体之间的关系（relation）连接数据。很早就有人提出，关系也可以用对象表达，这样的话，就能使用面向对象编程，来操作关系型数据库。</p>
+<p><img src="/image/xorm/orm.png" alt="orm"></p>
+<p>简单说，ORM 就是通过实例对象的语法，完成关系型数据库的操作的技术，是”对象-关系映射”（Object/Relational Mapping） 的缩写。</p>
+<p>举个最简单的例子：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> <span class="string">`User`</span> (<span class="string">`Name`</span> <span class="built_in">text</span>, <span class="string">`Age`</span> <span class="built_in">integer</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> <span class="string">`User`</span> (<span class="string">`Name`</span>, <span class="string">`Age`</span>) <span class="keyword">VALUES</span> (<span class="string">"Tom"</span>, <span class="number">18</span>);</span><br><span class="line"><span class="keyword">SELECT</span> * <span class="keyword">FROM</span> <span class="string">`User`</span>;</span><br></pre></td></tr></table></figure>
+<p>对应的 orm 应该为：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> User <span class="keyword">struct</span> &#123;</span><br><span class="line">    Name <span class="keyword">string</span></span><br><span class="line">    Age  <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">orm.CreateTable(&amp;User&#123;&#125;)</span><br><span class="line">orm.Save(&amp;User&#123;<span class="string">"Tom"</span>, <span class="number">18</span>&#125;)</span><br><span class="line"><span class="keyword">var</span> users []User</span><br><span class="line">orm.Find(&amp;users)</span><br></pre></td></tr></table></figure>
+<p>我最近阅读了<a href="https://github.com/xormplus/xorm" target="_blank" rel="noopener">xorm</a>的源码，实现了一个简易的 orm 框架，其主要实现了：</p>
+<ul>
+<li>屏蔽不同数据库之间的差异</li>
+<li>完成数据库中表结构和编程语言中的对象映射</li>
+<li>支持链式调用</li>
+<li>支持 hooks</li>
+<li>事务的支持</li>
+<li>简易数据库迁移</li>
+</ul>
+<p>框架的架构图如下：</p>
+<p><img src="/image/xorm/architecture.jpg" alt="architecture"></p>
+<p>简单的流程就是 go 代码 -&gt; 得到表信息 -&gt; 根据表信息和代码拼接 sql -&gt; 去 db 查询返回结果。<br>有点乱？看不懂？没事的，接下来我会带你一步步实现这个简易的 orm。</p>
+<h1 id="Session"><a href="#Session" class="headerlink" title="Session"></a>Session</h1><p>从架构图中可以看出，session 是整个项目的核心，我们先来实现他与数据库最简单的原生交互：</p>
+<p><img src="/image/xorm/session.jpg" alt="session"></p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"database/sql"</span></span><br><span class="line">        <span class="string">"strings"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Session <span class="keyword">struct</span> &#123;</span><br><span class="line">        db      *sql.DB</span><br><span class="line">        sql     strings.Builder <span class="comment">// 用于拼接SQL语句</span></span><br><span class="line">        sqlVars []<span class="keyword">interface</span>&#123;&#125; <span class="comment">// 用于记录SQL语句中占位符的对应值</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">New</span><span class="params">(db *sql.DB)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;Session&#123;db: db&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Clear</span><span class="params">()</span></span> &#123;</span><br><span class="line">        s.sql.Reset()</span><br><span class="line">        s.sqlVars = <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">DB</span><span class="params">()</span> *<span class="title">sql</span>.<span class="title">DB</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> s.db</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Raw</span><span class="params">(sql <span class="keyword">string</span>, values ...<span class="keyword">interface</span>&#123;&#125;)</span> *<span class="title">Session</span></span> &#123; <span class="comment">// 改变这sql和sqlVars的值</span></span><br><span class="line">        s.sql.WriteString(sql)</span><br><span class="line">        s.sql.WriteString(<span class="string">" "</span>)</span><br><span class="line">        s.sqlVars = <span class="built_in">append</span>(s.sqlVars, values...)</span><br><span class="line">        <span class="keyword">return</span> s</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接下来我们实现 Exec，QueryRow，QueryRows 原生方法</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Exec</span><span class="params">()</span> <span class="params">(result sql.Result, err error)</span></span> &#123;</span><br><span class="line">        <span class="keyword">defer</span> s.Clear()</span><br><span class="line">        log.Info(s.sql.String(), s.sqlVars)</span><br><span class="line">        <span class="keyword">if</span> result, err = s.DB().Exec(s.sql.String(), s.sqlVars...); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">QueryRow</span><span class="params">()</span> *<span class="title">sql</span>.<span class="title">Row</span></span> &#123;</span><br><span class="line">        <span class="keyword">defer</span> s.Clear()</span><br><span class="line">        log.Info(s.sql.String(), s.sqlVars)</span><br><span class="line">        <span class="keyword">return</span> s.DB().QueryRow(s.sql.String(), s.sqlVars...)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">QueryRows</span><span class="params">()</span> <span class="params">(rows *sql.Rows, err error)</span></span> &#123;</span><br><span class="line">        <span class="keyword">defer</span> s.Clear()</span><br><span class="line">        log.Info(s.sql.String(), s.sqlVars)</span><br><span class="line">        <span class="keyword">if</span> rows, err = s.DB().Query(s.sql.String(), s.sqlVars...); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Session 主要负责与数据库交互及交互前生成 sql 语句，而整个项目我们需要使用一个 Engine 封装来维护，作为用户的入口：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> aktorm</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"database/sql"</span></span><br><span class="line"></span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"aktorm/session"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Engine <span class="keyword">struct</span> &#123;</span><br><span class="line">        db *sql.DB</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewEngine</span><span class="params">(driver, source <span class="keyword">string</span>)</span> <span class="params">(e *Engine, err error)</span></span> &#123;</span><br><span class="line">        db, err := sql.Open(driver, source)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> err = db.Ping(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        e = &amp;Engine&#123;db: db&#125;</span><br><span class="line">        log.Info(<span class="string">"Connect database success"</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(engine *Engine)</span> <span class="title">Close</span><span class="params">()</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> err := engine.db.Close(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(<span class="string">"Failed to close database"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        log.Info(<span class="string">"Close database success"</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(engine *Engine)</span> <span class="title">NewSession</span><span class="params">()</span> *<span class="title">session</span>.<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> session.New(engine.db)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这样，一个最基本的结构就形成了，我们写两个测试来测试一下</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"database/sql"</span></span><br><span class="line">        <span class="string">"os"</span></span><br><span class="line">        <span class="string">"testing"</span></span><br><span class="line"></span><br><span class="line">        _ <span class="string">"github.com/mattn/go-sqlite3"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> TestDB *sql.DB</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestMain</span><span class="params">(m *testing.M)</span></span> &#123;</span><br><span class="line">        TestDB, _ = sql.Open(<span class="string">"sqlite3"</span>, <span class="string">"../akt.db"</span>)</span><br><span class="line">        code := m.Run()</span><br><span class="line">        _ = TestDB.Close()</span><br><span class="line">        os.Exit(code)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewSession</span><span class="params">()</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> New(TestDB)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_Exec</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := NewSession()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"DROP TABLE IF EXISTS User;"</span>).Exec()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"CREATE TABLE User(Name text);"</span>).Exec()</span><br><span class="line">        result, _ := s.Raw(<span class="string">"INSERT INTO User(`Name`) values (?), (?)"</span>, <span class="string">"Tom"</span>, <span class="string">"Sam"</span>).Exec()</span><br><span class="line">        <span class="keyword">if</span> count, err := result.RowsAffected(); err != <span class="literal">nil</span> || count != <span class="number">2</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"expect 2, but got"</span>, count)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_QueryRows</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := NewSession()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"DROP TABLE IF EXISTS User;"</span>).Exec()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"CREATE TABLE User(Name text);"</span>).Exec()</span><br><span class="line">        row := s.Raw(<span class="string">"SELECT count(*) FROM User"</span>).QueryRow()</span><br><span class="line">        <span class="keyword">var</span> count <span class="keyword">int</span></span><br><span class="line">        <span class="keyword">if</span> err := row.Scan(&amp;count); err != <span class="literal">nil</span> || count != <span class="number">0</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to query db"</span>, err)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">package</span> aktorm</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        _ <span class="string">"github.com/mattn/go-sqlite3"</span></span><br><span class="line">        <span class="string">"testing"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">OpenDB</span><span class="params">(t *testing.T)</span> *<span class="title">Engine</span></span> &#123;</span><br><span class="line">        t.Helper()</span><br><span class="line">        engine, err := NewEngine(<span class="string">"sqlite3"</span>, <span class="string">"akt.db"</span>)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to connect"</span>, err)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> engine</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestNewEngine</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        engine := OpenDB(t)</span><br><span class="line">        <span class="keyword">defer</span> engine.Close()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Dialect"><a href="#Dialect" class="headerlink" title="Dialect"></a>Dialect</h1><p>dialect  主要作用是根据要储存的数据库，将 go 语言的类型映射为数据库中的类型。</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> dialect</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"reflect"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> dialectsMap = <span class="keyword">map</span>[<span class="keyword">string</span>]Dialect&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Dialect <span class="keyword">interface</span> &#123;</span><br><span class="line">        DataTypeOf(reflect.Value) <span class="keyword">string</span>                        <span class="comment">// 用于将 Go 语言的类型转换为该数据库的数据类型</span></span><br><span class="line">        TableExistSQL(tableName <span class="keyword">string</span>) (<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;) <span class="comment">// 返回某个表是否存在的 SQL 语句</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">RegisterDialect</span><span class="params">(name <span class="keyword">string</span>, dialect Dialect)</span></span> &#123;</span><br><span class="line">        dialectsMap[name] = dialect</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">GetDialect</span><span class="params">(name <span class="keyword">string</span>)</span> <span class="params">(Dialect, <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">        dialect, ok := dialectsMap[name]</span><br><span class="line">        <span class="keyword">return</span> dialect, ok</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> dialect</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"fmt"</span></span><br><span class="line">        <span class="string">"reflect"</span></span><br><span class="line">        <span class="string">"time"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> sqlite3 <span class="keyword">struct</span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 确保sqlite3实现了Dialect接口的所有方法</span></span><br><span class="line"><span class="keyword">var</span> _ Dialect = (*sqlite3)(<span class="literal">nil</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">init</span><span class="params">()</span></span> &#123;</span><br><span class="line">        RegisterDialect(<span class="string">"sqlite3"</span>, &amp;sqlite3&#123;&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *sqlite3)</span> <span class="title">DataTypeOf</span><span class="params">(typ reflect.Value)</span> <span class="title">string</span></span> &#123;</span><br><span class="line">        <span class="keyword">switch</span> typ.Kind() &#123;</span><br><span class="line">        <span class="keyword">case</span> reflect.Bool:</span><br><span class="line">                <span class="keyword">return</span> <span class="string">"bool"</span></span><br><span class="line">        <span class="keyword">case</span> reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,</span><br><span class="line">                reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uintptr:</span><br><span class="line">                <span class="keyword">return</span> <span class="string">"integer"</span></span><br><span class="line">        <span class="keyword">case</span> reflect.Int64, reflect.Uint64:</span><br><span class="line">                <span class="keyword">return</span> <span class="string">"bigint"</span></span><br><span class="line">        <span class="keyword">case</span> reflect.Float32, reflect.Float64:</span><br><span class="line">                <span class="keyword">return</span> <span class="string">"real"</span></span><br><span class="line">        <span class="keyword">case</span> reflect.String:</span><br><span class="line">                <span class="keyword">return</span> <span class="string">"text"</span></span><br><span class="line">        <span class="keyword">case</span> reflect.Array, reflect.Slice:</span><br><span class="line">                <span class="keyword">return</span> <span class="string">"blob"</span></span><br><span class="line">        <span class="keyword">case</span> reflect.Struct:</span><br><span class="line">                <span class="keyword">if</span> _, ok := typ.Interface().(time.Time); ok &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="string">"datetime"</span></span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">panic</span>(fmt.Sprintf(<span class="string">"invalid sql type %s (%s)"</span>, typ.Type().Name(), typ.Kind()))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *sqlite3)</span> <span class="title">TableExistSQL</span><span class="params">(tableName <span class="keyword">string</span>)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        args := []<span class="keyword">interface</span>&#123;&#125;&#123;tableName&#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">"SELECT name FROM sqlite_master WHERE type='table' and name = ?"</span>, args</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在引擎创建时，应当指明 dialect 类型</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"database/sql"</span></span><br><span class="line"></span><br><span class="line">        <span class="string">"aktorm/dialect"</span></span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"aktorm/session"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Engine <span class="keyword">struct</span> &#123;</span><br><span class="line">        db      *sql.DB</span><br><span class="line">        <span class="comment">// new</span></span><br><span class="line">        dialect dialect.Dialect</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewEngine</span><span class="params">(driver, source <span class="keyword">string</span>)</span> <span class="params">(e *Engine, err error)</span></span> &#123;</span><br><span class="line">        db, err := sql.Open(driver, source)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> err = db.Ping(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// new</span></span><br><span class="line">        dial, ok := dialect.GetDialect(driver)</span><br><span class="line">        <span class="keyword">if</span> !ok &#123;</span><br><span class="line">                log.Errorf(<span class="string">"dialect %s Not Found"</span>, driver)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        e = &amp;Engine&#123;db: db, dialect: dial&#125;</span><br><span class="line">        log.Info(<span class="string">"Connect database success"</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(engine *Engine)</span> <span class="title">Close</span><span class="params">()</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> err := engine.db.Close(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(<span class="string">"Failed to close database"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        log.Info(<span class="string">"Close database success"</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// new</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(engine *Engine)</span> <span class="title">NewSession</span><span class="params">()</span> *<span class="title">session</span>.<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> session.New(engine.db, engine.dialect)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Schema<br>有了 dialect 后，我们可以创建一个 schema 用于桥接 session 和 dialect，负责解析 go 代码获取相应的 table 信息：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> schema</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/dialect"</span></span><br><span class="line">        <span class="string">"go/ast"</span></span><br><span class="line">        <span class="string">"reflect"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Field <span class="keyword">struct</span> &#123;</span><br><span class="line">        Name <span class="keyword">string</span> <span class="comment">// 字段名</span></span><br><span class="line">        Type <span class="keyword">string</span> <span class="comment">// 类型</span></span><br><span class="line">        Tag  <span class="keyword">string</span> <span class="comment">// 约束条件</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Schema <span class="keyword">struct</span> &#123;</span><br><span class="line">        Model      <span class="keyword">interface</span>&#123;&#125; <span class="comment">// 被映射的对象</span></span><br><span class="line">        Name       <span class="keyword">string</span>      <span class="comment">// 表名</span></span><br><span class="line">        Fields     []*Field    <span class="comment">// 字段</span></span><br><span class="line">        FieldNames []<span class="keyword">string</span>    <span class="comment">//列名</span></span><br><span class="line">        fieldMap   <span class="keyword">map</span>[<span class="keyword">string</span>]*Field</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(schema *Schema)</span> <span class="title">GetField</span><span class="params">(name <span class="keyword">string</span>)</span> *<span class="title">Field</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> schema.fieldMap[name]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 任意的对象解析为Schema实例</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Parse</span><span class="params">(dest <span class="keyword">interface</span>&#123;&#125;, d dialect.Dialect)</span> *<span class="title">Schema</span></span> &#123;</span><br><span class="line">        <span class="comment">// reflect.Indirect()获取指针指向的实例 reflect.ValueOf()获取值 reflect.Type()获取类型</span></span><br><span class="line">        modelType := reflect.Indirect(reflect.ValueOf(dest)).Type()</span><br><span class="line">        schema := &amp;Schema&#123;</span><br><span class="line">                Model:    dest,</span><br><span class="line">                Name:     modelType.Name(), <span class="comment">// 获取到结构体的名称</span></span><br><span class="line">                fieldMap: <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">string</span>]*Field),</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// modelType.NumField()获取实例的字段的个数</span></span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; modelType.NumField(); i++ &#123;</span><br><span class="line">                p := modelType.Field(i) <span class="comment">// 通过下标获取到特定字段</span></span><br><span class="line">                <span class="keyword">if</span> !p.Anonymous &amp;&amp; ast.IsExported(p.Name) &#123;</span><br><span class="line">                        field := &amp;Field&#123;</span><br><span class="line">                                Name: p.Name,</span><br><span class="line">                                Type: d.DataTypeOf(reflect.Indirect(reflect.New(p.Type))),</span><br><span class="line">                        &#125;</span><br><span class="line">                        <span class="keyword">if</span> v, ok := p.Tag.Lookup(<span class="string">"aktorm"</span>); ok &#123;</span><br><span class="line">                                field.Tag = v</span><br><span class="line">                        &#125;</span><br><span class="line">                        schema.Fields = <span class="built_in">append</span>(schema.Fields, field)</span><br><span class="line">                        schema.FieldNames = <span class="built_in">append</span>(schema.FieldNames, p.Name)</span><br><span class="line">                        schema.fieldMap[p.Name] = field</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> schema</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后我们更新下 session：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/dialect"</span></span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"aktorm/schema"</span></span><br><span class="line">        <span class="string">"database/sql"</span></span><br><span class="line">        <span class="string">"strings"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Session <span class="keyword">struct</span> &#123;</span><br><span class="line">        db       *sql.DB</span><br><span class="line">        dialect  dialect.Dialect</span><br><span class="line">        refTable *schema.Schema</span><br><span class="line">        sql      strings.Builder</span><br><span class="line">        sqlVars  []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">New</span><span class="params">(db *sql.DB, dialect dialect.Dialect)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;Session&#123;</span><br><span class="line">                db:      db,</span><br><span class="line">                dialect: dialect,</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后我们来实现一下建表语句：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"aktorm/schema"</span></span><br><span class="line">        <span class="string">"fmt"</span></span><br><span class="line">        <span class="string">"reflect"</span></span><br><span class="line">        <span class="string">"strings"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 给 refTable 赋值</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Model</span><span class="params">(value <span class="keyword">interface</span>&#123;&#125;)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> s.refTable == <span class="literal">nil</span> || reflect.TypeOf(value) != reflect.TypeOf(s.refTable.Model) &#123;</span><br><span class="line">                s.refTable = schema.Parse(value, s.dialect)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">RefTable</span><span class="params">()</span> *<span class="title">schema</span>.<span class="title">Schema</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> s.refTable == <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(<span class="string">"Model is not set"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s.refTable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">CreateTable</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        table := s.RefTable()</span><br><span class="line">        columns := []<span class="keyword">string</span>&#123;&#125;</span><br><span class="line">        <span class="keyword">for</span> _, field := <span class="keyword">range</span> table.Fields &#123;</span><br><span class="line">                columns = <span class="built_in">append</span>(columns, fmt.Sprintf(<span class="string">"%s %s %s"</span>, field.Name, field.Type, field.Tag))</span><br><span class="line">        &#125;</span><br><span class="line">        desc := strings.Join(columns, <span class="string">","</span>)</span><br><span class="line">        _, err := s.Raw(fmt.Sprintf(<span class="string">"CREATE TABLE %s (%s);"</span>, table.Name, desc)).Exec()</span><br><span class="line">        <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">DropTable</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        _, err := s.Raw(fmt.Sprintf(<span class="string">"DROP TABLE IF EXISTS %s"</span>, s.RefTable().Name)).Exec()</span><br><span class="line">        <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">HasTable</span><span class="params">()</span> <span class="title">bool</span></span> &#123;</span><br><span class="line">        sql, values := s.dialect.TableExistSQL(s.RefTable().Name)</span><br><span class="line">        row := s.Raw(sql, values...).QueryRow()</span><br><span class="line">        <span class="keyword">var</span> tmp <span class="keyword">string</span></span><br><span class="line">        _ = row.Scan(&amp;tmp)</span><br><span class="line">        <span class="keyword">return</span> tmp == s.RefTable().Name</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们来写下测试测试一下代码：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> schema</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/dialect"</span></span><br><span class="line">        <span class="string">"testing"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> User <span class="keyword">struct</span> &#123;</span><br><span class="line">        Name <span class="keyword">string</span> <span class="string">`aktorm:"PRIMARY KEY"`</span></span><br><span class="line">        Age  <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> TestDial, _ = dialect.GetDialect(<span class="string">"sqlite3"</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestParse</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        schema := Parse(&amp;User&#123;&#125;, TestDial)</span><br><span class="line">        <span class="keyword">if</span> schema.Name != <span class="string">"User"</span> || <span class="built_in">len</span>(schema.Fields) != <span class="number">2</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to parse User struct"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> schema.GetField(<span class="string">"Name"</span>).Tag != <span class="string">"PRIMARY KEY"</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to parse primary key"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"testing"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> User <span class="keyword">struct</span> &#123;</span><br><span class="line">        Name <span class="keyword">string</span> <span class="string">`aktorm:"PRIMARY KEY"`</span></span><br><span class="line">        Age  <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_CreateTable</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := NewSession().Model(&amp;User&#123;&#125;)</span><br><span class="line">        _ = s.DropTable()</span><br><span class="line">        _ = s.CreateTable()</span><br><span class="line">        <span class="keyword">if</span> !s.HasTable() &#123;</span><br><span class="line">                t.Fatal(<span class="string">"Failed to create table User"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Clause"><a href="#Clause" class="headerlink" title="Clause"></a>Clause</h1><p>现在我们来实现最后的 clause 作用主要是实现并拼接各个子句的生成规则。<br>generator 主要实现生成规则：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> clause</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"fmt"</span></span><br><span class="line">        <span class="string">"strings"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> generator <span class="function"><span class="keyword">func</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> generators <span class="keyword">map</span>[Type]generator</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">init</span><span class="params">()</span></span> &#123;</span><br><span class="line">        generators = <span class="built_in">make</span>(<span class="keyword">map</span>[Type]generator)</span><br><span class="line">        generators[INSERT] = _insert</span><br><span class="line">        generators[VALUES] = _values</span><br><span class="line">        generators[SELECT] = _select</span><br><span class="line">        generators[LIMIT] = _limit</span><br><span class="line">        generators[WHERE] = _where</span><br><span class="line">        generators[ORDERBY] = _orderBy</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">genBindVars</span><span class="params">(num <span class="keyword">int</span>)</span> <span class="title">string</span></span> &#123;</span><br><span class="line">        <span class="keyword">var</span> vars []<span class="keyword">string</span></span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; num; i++ &#123;</span><br><span class="line">                vars = <span class="built_in">append</span>(vars, <span class="string">"?"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> strings.Join(vars, <span class="string">", "</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> _<span class="title">insert</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123; <span class="comment">// INSERT INTO $tableName ($fields)</span></span><br><span class="line">        tableName := values[<span class="number">0</span>]</span><br><span class="line">        fields := strings.Join(values[<span class="number">1</span>].([]<span class="keyword">string</span>), <span class="string">","</span>)</span><br><span class="line">        <span class="keyword">return</span> fmt.Sprintf(<span class="string">"INSERT INTO %s (%v)"</span>, tableName, fields), []<span class="keyword">interface</span>&#123;&#125;&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> _<span class="title">values</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123; <span class="comment">// VALUES ($v1), ($v2), ...</span></span><br><span class="line">        <span class="keyword">var</span> bindStr <span class="keyword">string</span></span><br><span class="line">        <span class="keyword">var</span> sql strings.Builder</span><br><span class="line">        <span class="keyword">var</span> vars []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">        sql.WriteString(<span class="string">"VALUES "</span>)</span><br><span class="line">        <span class="keyword">for</span> i, value := <span class="keyword">range</span> values &#123;</span><br><span class="line">                v := value.([]<span class="keyword">interface</span>&#123;&#125;)</span><br><span class="line">                <span class="keyword">if</span> bindStr == <span class="string">""</span> &#123;</span><br><span class="line">                        bindStr = genBindVars(<span class="built_in">len</span>(v))</span><br><span class="line">                &#125;</span><br><span class="line">                sql.WriteString(fmt.Sprintf(<span class="string">"(%v)"</span>, bindStr))</span><br><span class="line">                <span class="keyword">if</span> i+<span class="number">1</span> != <span class="built_in">len</span>(values) &#123;</span><br><span class="line">                        sql.WriteString(<span class="string">", "</span>)</span><br><span class="line">                &#125;</span><br><span class="line">                vars = <span class="built_in">append</span>(vars, v...)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> sql.String(), vars</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> _<span class="title">select</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123; <span class="comment">// SELECT $fields FROM $tableName</span></span><br><span class="line">        tableName := values[<span class="number">0</span>]</span><br><span class="line">        fields := strings.Join(values[<span class="number">1</span>].([]<span class="keyword">string</span>), <span class="string">","</span>)</span><br><span class="line">        <span class="keyword">return</span> fmt.Sprintf(<span class="string">"SELECT %v FROM %s"</span>, fields, tableName), []<span class="keyword">interface</span>&#123;&#125;&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> _<span class="title">limit</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123; <span class="comment">// LIMIT $num</span></span><br><span class="line">        <span class="keyword">return</span> <span class="string">"LIMIT ?"</span>, values</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> _<span class="title">where</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123; <span class="comment">// WHERE $desc</span></span><br><span class="line">        desc, vars := values[<span class="number">0</span>], values[<span class="number">1</span>:]</span><br><span class="line">        <span class="keyword">return</span> fmt.Sprintf(<span class="string">"WHERE %s"</span>, desc), vars</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> _<span class="title">orderBy</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> fmt.Sprintf(<span class="string">"ORDER BY %s"</span>, values[<span class="number">0</span>]), []<span class="keyword">interface</span>&#123;&#125;&#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>clause 主要用于拼接</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> clause</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"strings"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Clause <span class="keyword">struct</span> &#123;</span><br><span class="line">        sql     <span class="keyword">map</span>[Type]<span class="keyword">string</span></span><br><span class="line">        sqlVars <span class="keyword">map</span>[Type][]<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Type <span class="keyword">int</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        INSERT Type = <span class="literal">iota</span></span><br><span class="line">        VALUES</span><br><span class="line">        SELECT</span><br><span class="line">        LIMIT</span><br><span class="line">        WHERE</span><br><span class="line">        ORDERBY</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *Clause)</span> <span class="title">Set</span><span class="params">(name Type, vars ...<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> c.sql == <span class="literal">nil</span> &#123;</span><br><span class="line">                c.sql = <span class="built_in">make</span>(<span class="keyword">map</span>[Type]<span class="keyword">string</span>)</span><br><span class="line">                c.sqlVars = <span class="built_in">make</span>(<span class="keyword">map</span>[Type][]<span class="keyword">interface</span>&#123;&#125;)</span><br><span class="line">        &#125;</span><br><span class="line">        sql, vars := generators[name](vars...)</span><br><span class="line">        c.sql[name] = sql</span><br><span class="line">        c.sqlVars[name] = vars</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *Clause)</span> <span class="title">Build</span><span class="params">(orders ...Type)</span> <span class="params">(<span class="keyword">string</span>, []<span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        <span class="keyword">var</span> sqls []<span class="keyword">string</span></span><br><span class="line">        <span class="keyword">var</span> vars []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">        <span class="keyword">for</span> _, order := <span class="keyword">range</span> orders &#123;</span><br><span class="line">                <span class="keyword">if</span> sql, ok := c.sql[order]; ok &#123;</span><br><span class="line">                        sqls = <span class="built_in">append</span>(sqls, sql)</span><br><span class="line">                        vars = <span class="built_in">append</span>(vars, c.sqlVars[order]...)</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> strings.Join(sqls, <span class="string">" "</span>), vars</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们将 clause 添加到 session 上：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="comment">// new</span></span><br><span class="line">        <span class="string">"aktorm/clause"</span></span><br><span class="line">        <span class="string">"aktorm/dialect"</span></span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"aktorm/schema"</span></span><br><span class="line">        )</span><br><span class="line"><span class="keyword">type</span> Session <span class="keyword">struct</span> &#123;</span><br><span class="line">        db       *sql.DB</span><br><span class="line">        dialect  dialect.Dialect</span><br><span class="line">        refTable *schema.Schema</span><br><span class="line">        <span class="comment">// new</span></span><br><span class="line">        clause   clause.Clause</span><br><span class="line">        sql      strings.Builder</span><br><span class="line">        sqlVars  []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Clear</span><span class="params">()</span></span> &#123;</span><br><span class="line">        s.sql.Reset()</span><br><span class="line">        s.sqlVars = <span class="literal">nil</span></span><br><span class="line">        s.clause = clause.Clause&#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后我们编写插入/查询方法：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/clause"</span></span><br><span class="line">        <span class="string">"reflect"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">// INSERT INTO table_name(col1, col2, col3, ...) VALUES</span></span><br><span class="line"><span class="comment">//     (A1, A2, A3, ...),</span></span><br><span class="line"><span class="comment">//     (B1, B2, B3, ...)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// s := aktorm.NewEngine("sqlite3", "akt.db").NewSession()</span></span><br><span class="line"><span class="comment">// u1 := &amp;User&#123;Name: "Tom", Age: 18&#125;</span></span><br><span class="line"><span class="comment">// u2 := &amp;User&#123;Name: "Sam", Age: 25&#125;</span></span><br><span class="line"><span class="comment">// s.Insert(u1, u2)</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Insert</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">int64</span>, error)</span></span> &#123;</span><br><span class="line">        recordValues := <span class="built_in">make</span>([]<span class="keyword">interface</span>&#123;&#125;, <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">for</span> _, value := <span class="keyword">range</span> values &#123;</span><br><span class="line">                table := s.Model(value).RefTable()</span><br><span class="line">                s.clause.Set(clause.INSERT, table.Name, table.FieldNames)</span><br><span class="line">                recordValues = <span class="built_in">append</span>(recordValues, table.RecordValues(value))</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        s.clause.Set(clause.VALUES, recordValues...)</span><br><span class="line">        sql, vars := s.clause.Build(clause.INSERT, clause.VALUES)</span><br><span class="line">        result, err := s.Raw(sql, vars...).Exec()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">0</span>, err</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> result.RowsAffected()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// s := aktorm.NewEngine("sqlite3", "akt.db").NewSession()</span></span><br><span class="line"><span class="comment">// var users []User</span></span><br><span class="line"><span class="comment">// s.Find(&amp;users);</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Find</span><span class="params">(values <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        destSlice := reflect.Indirect(reflect.ValueOf(values))</span><br><span class="line">        destType := destSlice.Type().Elem() <span class="comment">// 获取切片的单个元素的类型</span></span><br><span class="line">        table := s.Model(reflect.New(destType).Elem().Interface()).RefTable()</span><br><span class="line"></span><br><span class="line">        s.clause.Set(clause.SELECT, table.Name, table.FieldNames)</span><br><span class="line">        sql, vars := s.clause.Build(clause.SELECT, clause.WHERE, clause.ORDERBY, clause.LIMIT)</span><br><span class="line">        rows, err := s.Raw(sql, vars...).QueryRows()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> rows.Next() &#123;</span><br><span class="line">                dest := reflect.New(destType).Elem()</span><br><span class="line">                <span class="keyword">var</span> values []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">                <span class="keyword">for</span> _, name := <span class="keyword">range</span> table.FieldNames &#123;</span><br><span class="line">                        values = <span class="built_in">append</span>(values, dest.FieldByName(name).Addr().Interface())</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> err := rows.Scan(values...); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> err</span><br><span class="line">                &#125;</span><br><span class="line">                destSlice.Set(reflect.Append(destSlice, dest))</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> rows.Close()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> clause</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"reflect"</span></span><br><span class="line">        <span class="string">"testing"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">testSelect</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        <span class="keyword">var</span> clause Clause</span><br><span class="line">        clause.Set(LIMIT, <span class="number">3</span>)</span><br><span class="line">        clause.Set(SELECT, <span class="string">"User"</span>, []<span class="keyword">string</span>&#123;<span class="string">"*"</span>&#125;)</span><br><span class="line">        clause.Set(WHERE, <span class="string">"Name = ?"</span>, <span class="string">"Tom"</span>)</span><br><span class="line">        clause.Set(ORDERBY, <span class="string">"Age ASC"</span>)</span><br><span class="line">        sql, vars := clause.Build(SELECT, WHERE, ORDERBY, LIMIT)</span><br><span class="line">        t.Log(sql, vars)</span><br><span class="line">        <span class="keyword">if</span> sql != <span class="string">"SELECT * FROM User WHERE Name = ? ORDER BY Age ASC LIMIT ?"</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to build SQL"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> !reflect.DeepEqual(vars, []<span class="keyword">interface</span>&#123;&#125;&#123;<span class="string">"Tom"</span>, <span class="number">3</span>&#125;) &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to build SQLVars"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestClause_Build</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        t.Run(<span class="string">"select"</span>, <span class="function"><span class="keyword">func</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">                testSelect(t)</span><br><span class="line">        &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"testing"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> (</span><br><span class="line">        user1 = &amp;User&#123;<span class="string">"Tom"</span>, <span class="number">18</span>&#125;</span><br><span class="line">        user2 = &amp;User&#123;<span class="string">"Sam"</span>, <span class="number">25</span>&#125;</span><br><span class="line">        user3 = &amp;User&#123;<span class="string">"Jack"</span>, <span class="number">25</span>&#125;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">testRecordInit</span><span class="params">(t *testing.T)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        t.Helper()</span><br><span class="line">        s := NewSession().Model(&amp;User&#123;&#125;)</span><br><span class="line">        err1 := s.DropTable()</span><br><span class="line">        err2 := s.CreateTable()</span><br><span class="line">        _, err3 := s.Insert(user1, user2)</span><br><span class="line">        <span class="keyword">if</span> err1 != <span class="literal">nil</span> || err2 != <span class="literal">nil</span> || err3 != <span class="literal">nil</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed init test records"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_Insert</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := testRecordInit(t)</span><br><span class="line">        affected, err := s.Insert(user3)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> || affected != <span class="number">1</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to create record"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_Find</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := testRecordInit(t)</span><br><span class="line">        <span class="keyword">var</span> users []User</span><br><span class="line">        <span class="keyword">if</span> err := s.Find(&amp;users); err != <span class="literal">nil</span> || <span class="built_in">len</span>(users) != <span class="number">2</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to query all"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="链式调用"><a href="#链式调用" class="headerlink" title="链式调用"></a>链式调用</h1><p>通过前 4 章的努力，我们已经将 orm 框架基本搭建了起来，接下来我们为其扩充更多的功能，首先是链式调用，update， delete 和 count 比较常用到，我们以这三个为例来编写：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> clause</span><br><span class="line"><span class="keyword">import</span> <span class="string">"strings"</span></span><br><span class="line"><span class="keyword">type</span> Clause <span class="keyword">struct</span> &#123;</span><br><span class="line">        sql     <span class="keyword">map</span>[Type]<span class="keyword">string</span></span><br><span class="line">        sqlVars <span class="keyword">map</span>[Type][]<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">type</span> Type <span class="keyword">int</span></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        INSERT Type = <span class="literal">iota</span></span><br><span class="line">        VALUES</span><br><span class="line">        SELECT</span><br><span class="line">        LIMIT</span><br><span class="line">        WHERE</span><br><span class="line">        ORDERBY</span><br><span class="line">        <span class="comment">// new</span></span><br><span class="line">        UPDATE</span><br><span class="line">        DELETE</span><br><span class="line">        COUNT</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>在 record 中注册方法，方法通过返回 session 从而实现链式调用：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Update</span><span class="params">(kv ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">int64</span>, error)</span></span> &#123;</span><br><span class="line">        m, ok := kv[<span class="number">0</span>].(<span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">interface</span>&#123;&#125;)</span><br><span class="line">        <span class="keyword">if</span> !ok &#123;</span><br><span class="line">                m = <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">interface</span>&#123;&#125;)</span><br><span class="line">                <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="built_in">len</span>(kv); i += <span class="number">2</span> &#123;</span><br><span class="line">                        m[kv[i].(<span class="keyword">string</span>)] = kv[i+<span class="number">1</span>]</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        s.clause.Set(clause.UPDATE, s.RefTable().Name, m)</span><br><span class="line">        sql, vars := s.clause.Build(clause.UPDATE, clause.WHERE)</span><br><span class="line">        result, err := s.Raw(sql, vars...).Exec()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">0</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result.RowsAffected()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Delete</span><span class="params">()</span> <span class="params">(<span class="keyword">int64</span>, error)</span></span> &#123;</span><br><span class="line">        s.clause.Set(clause.DELETE, s.RefTable().Name)</span><br><span class="line">        sql, vars := s.clause.Build(clause.DELETE, clause.WHERE)</span><br><span class="line">        result, err := s.Raw(sql, vars...).Exec()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">0</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result.RowsAffected()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Count</span><span class="params">()</span> <span class="params">(<span class="keyword">int64</span>, error)</span></span> &#123;</span><br><span class="line">        s.clause.Set(clause.COUNT, s.RefTable().Name)</span><br><span class="line">        sql, vars := s.clause.Build(clause.COUNT, clause.WHERE)</span><br><span class="line">        row := s.Raw(sql, vars...).QueryRow()</span><br><span class="line">        <span class="keyword">var</span> tmp <span class="keyword">int64</span></span><br><span class="line">        <span class="keyword">if</span> err := row.Scan(&amp;tmp); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">0</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> tmp, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Limit</span><span class="params">(num <span class="keyword">int</span>)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        s.clause.Set(clause.LIMIT, num)</span><br><span class="line">        <span class="keyword">return</span> s</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Where</span><span class="params">(desc <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        <span class="keyword">var</span> vars []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">        s.clause.Set(clause.WHERE, <span class="built_in">append</span>(<span class="built_in">append</span>(vars, desc), args...)...)</span><br><span class="line">        <span class="keyword">return</span> s</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">OrderBy</span><span class="params">(desc <span class="keyword">string</span>)</span> *<span class="title">Session</span></span> &#123;</span><br><span class="line">        s.clause.Set(clause.ORDERBY, desc)</span><br><span class="line">        <span class="keyword">return</span> s</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">First</span><span class="params">(value <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        dest := reflect.Indirect(reflect.ValueOf(value))</span><br><span class="line">        destSlice := reflect.New(reflect.SliceOf(dest.Type())).Elem()</span><br><span class="line">        <span class="keyword">if</span> err := s.Limit(<span class="number">1</span>).Find(destSlice.Addr().Interface()); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> destSlice.Len() == <span class="number">0</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> errors.New(<span class="string">"NOT FOUND"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        dest.Set(destSlice.Index(<span class="number">0</span>))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：<br>record_test.go</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_Limit</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := testRecordInit(t)</span><br><span class="line">        <span class="keyword">var</span> users []User</span><br><span class="line">        err := s.Limit(<span class="number">1</span>).Find(&amp;users)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> || <span class="built_in">len</span>(users) != <span class="number">1</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to query with limit condition"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_Update</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := testRecordInit(t)</span><br><span class="line">        affected, _ := s.Where(<span class="string">"Name = ?"</span>, <span class="string">"Tom"</span>).Update(<span class="string">"Age"</span>, <span class="number">30</span>)</span><br><span class="line">        u := &amp;User&#123;&#125;</span><br><span class="line">        _ = s.OrderBy(<span class="string">"Age DESC"</span>).First(u)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> affected != <span class="number">1</span> || u.Age != <span class="number">30</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to update"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_DeleteAndCount</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := testRecordInit(t)</span><br><span class="line">        affected, _ := s.Where(<span class="string">"Name = ?"</span>, <span class="string">"Tom"</span>).Delete()</span><br><span class="line">        count, _ := s.Count()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> affected != <span class="number">1</span> || count != <span class="number">1</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to delete or count"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="hooks"><a href="#hooks" class="headerlink" title="hooks"></a>hooks</h1><p>当我们在进行 crud 的时候，可能会进行一些例如脱敏相关的操作，这个时候，hooks 的存在会大大简化我们的代码，这一章我们就来实现它：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"reflect"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">// Hooks constants</span></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        BeforeQuery  = <span class="string">"BeforeQuery"</span></span><br><span class="line">        AfterQuery   = <span class="string">"AfterQuery"</span></span><br><span class="line">        BeforeUpdate = <span class="string">"BeforeUpdate"</span></span><br><span class="line">        AfterUpdate  = <span class="string">"AfterUpdate"</span></span><br><span class="line">        BeforeDelete = <span class="string">"BeforeDelete"</span></span><br><span class="line">        AfterDelete  = <span class="string">"AfterDelete"</span></span><br><span class="line">        BeforeInsert = <span class="string">"BeforeInsert"</span></span><br><span class="line">        AfterInsert  = <span class="string">"AfterInsert"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">CallMethod</span><span class="params">(method <span class="keyword">string</span>, value <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        fm := reflect.ValueOf(s.RefTable().Model).MethodByName(method)</span><br><span class="line">        <span class="keyword">if</span> value != <span class="literal">nil</span> &#123;</span><br><span class="line">                fm = reflect.ValueOf(value).MethodByName(method)</span><br><span class="line">        &#125;</span><br><span class="line">        param := []reflect.Value&#123;reflect.ValueOf(s)&#125;</span><br><span class="line">        <span class="keyword">if</span> fm.IsValid() &#123;</span><br><span class="line">                <span class="keyword">if</span> v := fm.Call(param); <span class="built_in">len</span>(v) &gt; <span class="number">0</span> &#123;</span><br><span class="line">                        <span class="keyword">if</span> err, ok := v[<span class="number">0</span>].Interface().(error); ok &#123;</span><br><span class="line">                                log.Error(err)</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后我们只需要在对应的事件上添加上即可：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Insert</span><span class="params">(values ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="params">(<span class="keyword">int64</span>, error)</span></span> &#123;</span><br><span class="line">        recordValues := <span class="built_in">make</span>([]<span class="keyword">interface</span>&#123;&#125;, <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">for</span> _, value := <span class="keyword">range</span> values &#123;</span><br><span class="line">                s.CallMethod(BeforeInsert, value)</span><br><span class="line">                table := s.Model(value).RefTable()</span><br><span class="line">                s.clause.Set(clause.INSERT, table.Name, table.FieldNames)</span><br><span class="line">                recordValues = <span class="built_in">append</span>(recordValues, table.RecordValues(value))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">0</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        s.CallMethod(AfterInsert, <span class="literal">nil</span>)</span><br><span class="line">        <span class="keyword">return</span> result.RowsAffected()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"aktorm/log"</span></span><br><span class="line">        <span class="string">"testing"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Account <span class="keyword">struct</span> &#123;</span><br><span class="line">        ID       <span class="keyword">int</span> <span class="string">`aktorm:"PRIMARY KEY"`</span></span><br><span class="line">        Password <span class="keyword">string</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(account *Account)</span> <span class="title">BeforeInsert</span><span class="params">(s *Session)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        log.Info(<span class="string">"before inert"</span>, account)</span><br><span class="line">        account.ID += <span class="number">1000</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(account *Account)</span> <span class="title">AfterQuery</span><span class="params">(s *Session)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        log.Info(<span class="string">"after query"</span>, account)</span><br><span class="line">        account.Password = <span class="string">"******"</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestSession_CallMethod</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        s := NewSession().Model(&amp;Account&#123;&#125;)</span><br><span class="line">        _ = s.DropTable()</span><br><span class="line">        _ = s.CreateTable()</span><br><span class="line">        _, _ = s.Insert(&amp;Account&#123;<span class="number">1</span>, <span class="string">"123456"</span>&#125;, &amp;Account&#123;<span class="number">2</span>, <span class="string">"qwerty"</span>&#125;)</span><br><span class="line"></span><br><span class="line">        u := &amp;Account&#123;&#125;</span><br><span class="line"></span><br><span class="line">        err := s.First(u)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> || u.ID != <span class="number">1001</span> || u.Password != <span class="string">"******"</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"Failed to call hooks after query, got"</span>, u)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Transaction"><a href="#Transaction" class="headerlink" title="Transaction"></a>Transaction</h1><blockquote>
+<p>数据库事务( transaction)是访问并可能操作各种数据项的一个数据库操作序列，这些操作要么全部执行,要么全部不执行，是一个不可分割的工作单位。  事务由事务开始与事务结束之间执行的全部数据库操作组成。</p>
+</blockquote>
+<p>事务举个例子简单来说，就是 A 转账给 B 1000 元，操作就是 a -1000, b +1000，如果有任何一个操作出错，则视为不成功，回滚至操作前。</p>
+<p>事务主要有四个特性：</p>
+<ol>
+<li>原子性（Atomicity）<br>　　原子性是指事务包含的所有操作要么全部成功，要么全部失败回滚，这和前面两篇博客介绍事务的功能是一样的概念，因此事务的操作如果成功就必须要完全应用到数据库，如果操作失败则不能对数据库有任何影响。</li>
+<li>一致性（Consistency）<br>　　一致性是指事务必须使数据库从一个一致性状态变换到另一个一致性状态，也就是说一个事务执行之前和执行之后都必须处于一致性状态。<br>　　拿转账来说，假设用户 A 和用户 B 两者的钱加起来一共是 5000，那么不管 A 和 B 之间如何转账，转几次账，事务结束后两个用户的钱相加起来应该还得是 5000，这就是事务的一致性。</li>
+<li>隔离性（Isolation）<br>　　隔离性是当多个用户并发访问数据库时，比如操作同一张表时，数据库为每一个用户开启的事务，不能被其他事务的操作所干扰，多个并发事务之间要相互隔离。<br>　　即要达到这么一种效果：对于任意两个并发的事务 T1 和 T2，在事务 T1 看来，T2 要么在 T1 开始之前就已经结束，要么在 T1 结束之后才开始，这样每个事务都感觉不到有其他事务在并发地执行。<br>　　关于事务的隔离性数据库提供了多种隔离级别，稍后会介绍到。</li>
+<li>持久性（Durability）<br>　　持久性是指一个事务一旦被提交了，那么对数据库中的数据的改变就是永久性的，即便是在数据库系统遇到故障的情况下也不会丢失提交事务的操作。</li>
+</ol>
+<p>例如我们在使用 JDBC 操作数据库时，在提交事务方法后，提示用户事务操作完成，当我们程序执行完成直到看到提示后，就可以认定事务以及正确提交，即使这时候数据库出现了问题，也必须要将我们的事务完全执行完成，否则就会造成我们看到提示事务处理完毕，但是数据库因为故障而没有执行事务的重大错误。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">DELETE</span> <span class="keyword">FROM</span> <span class="keyword">User</span> <span class="keyword">WHERE</span> Age &gt; <span class="number">25</span>;</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> <span class="keyword">User</span> <span class="keyword">VALUES</span> (<span class="string">"Tom"</span>, <span class="number">25</span>), (<span class="string">"Jack"</span>, <span class="number">18</span>);</span><br><span class="line"><span class="keyword">COMMIT</span>;</span><br></pre></td></tr></table></figure>
+<p>我们先在 raw.go 中添加上</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Session <span class="keyword">struct</span> &#123;</span><br><span class="line">        db       *sql.DB</span><br><span class="line">        dialect  dialect.Dialect</span><br><span class="line">        <span class="comment">// new</span></span><br><span class="line">        tx       *sql.Tx</span><br><span class="line">        refTable *schema.Schema</span><br><span class="line">        clause   clause.Clause</span><br><span class="line">        sql      strings.Builder</span><br><span class="line">        sqlVars  []<span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> CommonDB <span class="keyword">interface</span> &#123;</span><br><span class="line">        Query(query <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;) (*sql.Rows, error)</span><br><span class="line">        QueryRow(query <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;) *sql.Row</span><br><span class="line">        Exec(query <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;) (sql.Result, error)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> _ CommonDB = (*sql.DB)(<span class="literal">nil</span>)</span><br><span class="line"><span class="keyword">var</span> _ CommonDB = (*sql.Tx)(<span class="literal">nil</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">DB</span><span class="params">()</span> <span class="title">CommonDB</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> s.tx != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> s.tx</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s.db</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后创建 transaction：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> session</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"aktorm/log"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Begin</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        log.Info(<span class="string">"transaction begin"</span>)</span><br><span class="line">        <span class="keyword">var</span> err error</span><br><span class="line">        <span class="keyword">if</span> s.tx, err = s.db.Begin(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">                <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Commit</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        log.Info(<span class="string">"transaction commit"</span>)</span><br><span class="line">        <span class="keyword">var</span> err error</span><br><span class="line">        <span class="keyword">if</span> err = s.tx.Commit(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Session)</span> <span class="title">Rollback</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        log.Info(<span class="string">"transaction rollback"</span>)</span><br><span class="line">        <span class="keyword">var</span> err error</span><br><span class="line">        <span class="keyword">if</span> err = s.tx.Rollback(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Error(err)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后在 engine 中加上：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> TxFunc <span class="function"><span class="keyword">func</span><span class="params">(*session.Session)</span> <span class="params">(<span class="keyword">interface</span>&#123;&#125;, error)</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(engine *Engine)</span> <span class="title">Transaction</span><span class="params">(f TxFunc)</span> <span class="params">(result <span class="keyword">interface</span>&#123;&#125;, err error)</span></span> &#123;</span><br><span class="line">        s := engine.NewSession()</span><br><span class="line">        <span class="keyword">if</span> err := s.Begin(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">                <span class="keyword">if</span> p := <span class="built_in">recover</span>(); p != <span class="literal">nil</span> &#123;</span><br><span class="line">                        _ = s.Rollback()</span><br><span class="line">                        <span class="built_in">panic</span>(p)</span><br><span class="line">                &#125; <span class="keyword">else</span> <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                        _ = s.Rollback()</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        err = s.Commit()</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> f(s)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测一下：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// aktorm_test.go</span></span><br><span class="line"><span class="keyword">type</span> User <span class="keyword">struct</span> &#123;</span><br><span class="line">        Name <span class="keyword">string</span> <span class="string">`aktorm:"PRIMARY KEY"`</span></span><br><span class="line">        Age  <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">transactionRollback</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        engine := OpenDB(t)</span><br><span class="line">        <span class="keyword">defer</span> engine.Close()</span><br><span class="line">        s := engine.NewSession()</span><br><span class="line">        _ = s.Model(&amp;User&#123;&#125;).DropTable()</span><br><span class="line">        _, err := engine.Transaction(<span class="function"><span class="keyword">func</span><span class="params">(s *session.Session)</span> <span class="params">(result <span class="keyword">interface</span>&#123;&#125;, err error)</span></span> &#123;</span><br><span class="line">                _ = s.Model(&amp;User&#123;&#125;).CreateTable()</span><br><span class="line">                _, err = s.Insert(&amp;User&#123;<span class="string">"Tom"</span>, <span class="number">18</span>&#125;)</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span>, errors.New(<span class="string">"Error"</span>)</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">if</span> err == <span class="literal">nil</span> || s.HasTable() &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to rollback"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">transactionCommit</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        engine := OpenDB(t)</span><br><span class="line">        <span class="keyword">defer</span> engine.Close()</span><br><span class="line">        s := engine.NewSession()</span><br><span class="line">        _ = s.Model(&amp;User&#123;&#125;).DropTable()</span><br><span class="line">        _, err := engine.Transaction(<span class="function"><span class="keyword">func</span><span class="params">(s *session.Session)</span> <span class="params">(result <span class="keyword">interface</span>&#123;&#125;, err error)</span></span> &#123;</span><br><span class="line">                _ = s.Model(&amp;User&#123;&#125;).CreateTable()</span><br><span class="line">                _, err = s.Insert(&amp;User&#123;<span class="string">"Tom"</span>, <span class="number">18</span>&#125;)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;)</span><br><span class="line">        u := &amp;User&#123;&#125;</span><br><span class="line">        _ = s.First(u)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> || u.Name != <span class="string">"Tom"</span> &#123;</span><br><span class="line">                t.Fatal(<span class="string">"failed to commit"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestEngine_Transaction</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        t.Run(<span class="string">"rollback"</span>, <span class="function"><span class="keyword">func</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">                transactionRollback(t)</span><br><span class="line">        &#125;)</span><br><span class="line">        t.Run(<span class="string">"commit"</span>, <span class="function"><span class="keyword">func</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">                transactionCommit(t)</span><br><span class="line">        &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Migrate"><a href="#Migrate" class="headerlink" title="Migrate"></a>Migrate</h1><p>当我们的 struct 发生改变时，我们应当能自动更新表结构。<br>增加字段的语法比较简单：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER</span> <span class="keyword">TABLE</span> table_name <span class="keyword">ADD</span> <span class="keyword">COLUMN</span> col_name, col_type;</span><br></pre></td></tr></table></figure>
+<p>而删除稍微麻烦一点：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> new_table <span class="keyword">AS</span> <span class="keyword">SELECT</span> col1, col2, ... <span class="keyword">from</span> old_table</span><br><span class="line"><span class="keyword">DROP</span> <span class="keyword">TABLE</span> old_table</span><br><span class="line"><span class="keyword">ALTER</span> <span class="keyword">TABLE</span> new_table <span class="keyword">RENAME</span> <span class="keyword">TO</span> old_table;</span><br></pre></td></tr></table></figure>
+<p>我们来实现一下它：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">difference</span><span class="params">(a []<span class="keyword">string</span>, b []<span class="keyword">string</span>)</span> []<span class="title">string</span></span> &#123;</span><br><span class="line">        diff := []<span class="keyword">string</span>&#123;&#125;</span><br><span class="line">        diffMap := <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">bool</span>&#123;&#125;</span><br><span class="line">        <span class="keyword">for</span> _, v := <span class="keyword">range</span> b &#123;</span><br><span class="line">                diffMap[v] = <span class="literal">true</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">for</span> _, v := <span class="keyword">range</span> a &#123;</span><br><span class="line">                <span class="keyword">if</span> _, ok := diffMap[v]; !ok &#123;</span><br><span class="line">                        diff = <span class="built_in">append</span>(diff, v)</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> diff</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ALTER TABLE table_name ADD COLUMN col_name, col_type;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// CREATE TABLE new_table AS SELECT col1, col2, ... from old_table</span></span><br><span class="line"><span class="comment">// DROP TABLE old_table</span></span><br><span class="line"><span class="comment">// ALTER TABLE new_table RENAME TO old_table;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(engine *Engine)</span> <span class="title">Migrate</span><span class="params">(value <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        _, err := engine.Transaction(<span class="function"><span class="keyword">func</span><span class="params">(s *session.Session)</span> <span class="params">(result <span class="keyword">interface</span>&#123;&#125;, err error)</span></span> &#123;</span><br><span class="line">                <span class="keyword">if</span> !s.Model(value).HasTable() &#123;</span><br><span class="line">                        log.Infof(<span class="string">"table %s doesn't exist"</span>, s.RefTable().Name)</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">nil</span>, s.CreateTable()</span><br><span class="line">                &#125;</span><br><span class="line">                table := s.RefTable()</span><br><span class="line">                rows, _ := s.Raw(fmt.Sprintf(<span class="string">"SELECT * FROM %s LIMIT 1"</span>, table.Name)).QueryRows()</span><br><span class="line">                columns, _ := rows.Columns()</span><br><span class="line">                addCols := difference(table.FieldNames, columns)</span><br><span class="line">                delCols := difference(columns, table.FieldNames)</span><br><span class="line">                log.Infof(<span class="string">"added cols %v, deleted cols %v"</span>, addCols, delCols)</span><br><span class="line"></span><br><span class="line">                <span class="keyword">for</span> _, col := <span class="keyword">range</span> addCols &#123;</span><br><span class="line">                        f := table.GetField(col)</span><br><span class="line">                        sqlStr := fmt.Sprintf(<span class="string">"ALTER TABLE %s ADD COLUMN %s %s;"</span>, table.Name, f.Name, f.Type)</span><br><span class="line">                        <span class="keyword">if</span> _, err = s.Raw(sqlStr).Exec(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                                <span class="keyword">return</span></span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> <span class="built_in">len</span>(delCols) == <span class="number">0</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span></span><br><span class="line">                &#125;</span><br><span class="line">                tmp := <span class="string">"tmp_"</span> + table.Name</span><br><span class="line">                fieldStr := strings.Join(table.FieldNames, <span class="string">", "</span>)</span><br><span class="line">                s.Raw(fmt.Sprintf(<span class="string">"CREATE TABLE %s AS SELECT %s from %s;"</span>, tmp, fieldStr, table.Name))</span><br><span class="line">                s.Raw(fmt.Sprintf(<span class="string">"DROP TABLE %s;"</span>, table.Name))</span><br><span class="line">                s.Raw(fmt.Sprintf(<span class="string">"ALTER TABLE %s RENAME TO %s;"</span>, tmp, table.Name))</span><br><span class="line">                _, err = s.Exec()</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestEngine_Migrate</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">        engine := OpenDB(t)</span><br><span class="line">        <span class="keyword">defer</span> engine.Close()</span><br><span class="line">        s := engine.NewSession()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"DROP TABLE IF EXISTS User;"</span>).Exec()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"CREATE TABLE User(Name text PRIMARY KEY, XXX integer);"</span>).Exec()</span><br><span class="line">        _, _ = s.Raw(<span class="string">"INSERT INTO User(`Name`) values (?), (?)"</span>, <span class="string">"Tom"</span>, <span class="string">"Sam"</span>).Exec()</span><br><span class="line">        engine.Migrate(&amp;User&#123;&#125;)</span><br><span class="line"></span><br><span class="line">        rows, _ := s.Raw(<span class="string">"SELECT * FROM User"</span>).QueryRows()</span><br><span class="line">        columns, _ := rows.Columns()</span><br><span class="line">        <span class="keyword">if</span> !reflect.DeepEqual(columns, []<span class="keyword">string</span>&#123;<span class="string">"Name"</span>, <span class="string">"Age"</span>&#125;) &#123;</span><br><span class="line">                t.Fatal(<span class="string">"Failed to migrate table User, got columns"</span>, columns)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="结尾"><a href="#结尾" class="headerlink" title="结尾"></a>结尾</h1><p>这个 orm 的框架较为简单，比如 struct 嵌套，外键，复合主键等等都没有考虑，一个好的 orm 框架，会有大量的代码来实现特性及相关功能。这里我就不写了，相信大家也能知道。<br>这个框架的意义是在于为了能了解到 orm 框架的设计及编写的思路，如果能从中学习到一些知识，那目的就达到了。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/golang/" rel="tag"># golang</a>
+          
+            <a href="/tags/orm/" rel="tag"># orm</a>
+          
+            <a href="/tags/数据库/" rel="tag"># 数据库</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/11/02/Gin简易实现/" rel="next" title="Gin 简易实现">
+                <i class="fa fa-chevron-left"></i> Gin 简易实现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2022/03/26/利用tokio构建一个极简server/" rel="prev" title="利用tokio构建一个极简server">
+                利用tokio构建一个极简server <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">29</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Session"><span class="nav-number">2.</span> <span class="nav-text">Session</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Dialect"><span class="nav-number">3.</span> <span class="nav-text">Dialect</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Clause"><span class="nav-number">4.</span> <span class="nav-text">Clause</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#链式调用"><span class="nav-number">5.</span> <span class="nav-text">链式调用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#hooks"><span class="nav-number">6.</span> <span class="nav-text">hooks</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Transaction"><span class="nav-number">7.</span> <span class="nav-text">Transaction</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Migrate"><span class="nav-number">8.</span> <span class="nav-text">Migrate</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#结尾"><span class="nav-number">9.</span> <span class="nav-text">结尾</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

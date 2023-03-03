@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Measure first. Optimize. Measure again.  前言之前编写的 rust 在前端的场景应用不多，我在最近研究了一下 WebAssembly 的实际落地，最终给一个开源计算库使用 WebAssembly 重写了计算逻辑，加速了 7x，开发时遇到了很多细节优化点，在这里分享给大家 初版构建这个开源项目的迭代部分如下 1234567891011var matrix;/">
+<meta name="keywords" content="WebAssembly,rust">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用Rust+WebAssembly来辅助你的JavaScript">
+<meta property="og:url" content="https://akitaSummer.github.io/2022/06/08/使用Rust+WebAssembly来辅助你的JavaScript/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="Measure first. Optimize. Measure again.  前言之前编写的 rust 在前端的场景应用不多，我在最近研究了一下 WebAssembly 的实际落地，最终给一个开源计算库使用 WebAssembly 重写了计算逻辑，加速了 7x，开发时遇到了很多细节优化点，在这里分享给大家 初版构建这个开源项目的迭代部分如下 1234567891011var matrix;/">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/rust-wasm/simd.png">
+<meta property="og:updated_time" content="2023-03-03T08:49:23.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="使用Rust+WebAssembly来辅助你的JavaScript">
+<meta name="twitter:description" content="Measure first. Optimize. Measure again.  前言之前编写的 rust 在前端的场景应用不多，我在最近研究了一下 WebAssembly 的实际落地，最终给一个开源计算库使用 WebAssembly 重写了计算逻辑，加速了 7x，开发时遇到了很多细节优化点，在这里分享给大家 初版构建这个开源项目的迭代部分如下 1234567891011var matrix;/">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/rust-wasm/simd.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2022/06/08/使用Rust+WebAssembly来辅助你的JavaScript/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>使用Rust+WebAssembly来辅助你的JavaScript | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2022/06/08/使用Rust+WebAssembly来辅助你的JavaScript/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">使用Rust+WebAssembly来辅助你的JavaScript
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2022-06-08 00:41:29" itemprop="dateCreated datePublished" datetime="2022-06-08T00:41:29+08:00">2022-06-08</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-03-03 16:49:23" itemprop="dateModified" datetime="2023-03-03T16:49:23+08:00">2023-03-03</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2022/06/08/使用Rust+WebAssembly来辅助你的JavaScript/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2022/06/08/使用Rust+WebAssembly来辅助你的JavaScript/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>Measure first. Optimize. Measure again.</p>
+</blockquote>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>之前编写的 rust 在前端的场景应用不多，我在最近研究了一下 WebAssembly 的实际落地，最终给一个开源计算库使用 WebAssembly 重写了计算逻辑，加速了 7x，开发时遇到了很多细节优化点，在这里分享给大家</p>
+<h1 id="初版构建"><a href="#初版构建" class="headerlink" title="初版构建"></a>初版构建</h1><p>这个开源项目的迭代部分如下</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> matrix;</span><br><span class="line"></span><br><span class="line"><span class="comment">// dosomething...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">  converged = iterate(settings, matrix).converged;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// dosomething...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> matrix;</span><br></pre></td></tr></table></figure>
+<p>其中的 iterate 函数为核心计算功能，具体内容如下。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// iterate.js</span></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Graphology Noverlap Iteration</span></span><br><span class="line"><span class="comment"> * ==============================</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Function used to perform a single iteration of the algorithm.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Matrices properties accessors.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">var</span> NODE_X = <span class="number">0</span>,</span><br><span class="line">  NODE_Y = <span class="number">1</span>,</span><br><span class="line">  NODE_SIZE = <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Constants.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">var</span> PPN = <span class="number">3</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Helpers.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">hashPair</span>(<span class="params">a, b</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> a + <span class="string">"§"</span> + b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">jitter</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0.01</span> * (<span class="number">0.5</span> - <span class="built_in">Math</span>.random());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Function used to perform a single interation of the algorithm.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param  <span class="type">&#123;object&#125;</span>       <span class="variable">options</span></span>    - Layout options.</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param  <span class="type">&#123;Float32Array&#125;</span> <span class="variable">NodeMatrix</span></span> - Node data.</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return <span class="type">&#123;object&#125;</span>                  </span>- Some metadata.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="built_in">module</span>.exports = <span class="function"><span class="keyword">function</span> <span class="title">iterate</span>(<span class="params">options, NodeMatrix</span>) </span>&#123;</span><br><span class="line">  <span class="comment">// Caching options</span></span><br><span class="line">  <span class="keyword">var</span> margin = options.margin;</span><br><span class="line">  <span class="keyword">var</span> ratio = options.ratio;</span><br><span class="line">  <span class="keyword">var</span> expansion = options.expansion;</span><br><span class="line">  <span class="keyword">var</span> gridSize = options.gridSize; <span class="comment">// <span class="doctag">TODO:</span> decrease grid size when few nodes?</span></span><br><span class="line">  <span class="keyword">var</span> speed = options.speed;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Generic iteration variables</span></span><br><span class="line">  <span class="keyword">var</span> i, j, x, y, l, size;</span><br><span class="line">  <span class="keyword">var</span> converged = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> length = NodeMatrix.length;</span><br><span class="line">  <span class="keyword">var</span> order = (length / PPN) | <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> deltaX = <span class="keyword">new</span> <span class="built_in">Float32Array</span>(order);</span><br><span class="line">  <span class="keyword">var</span> deltaY = <span class="keyword">new</span> <span class="built_in">Float32Array</span>(order);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Finding the extents of our space</span></span><br><span class="line">  <span class="keyword">var</span> xMin = <span class="literal">Infinity</span>;</span><br><span class="line">  <span class="keyword">var</span> yMin = <span class="literal">Infinity</span>;</span><br><span class="line">  <span class="keyword">var</span> xMax = -<span class="literal">Infinity</span>;</span><br><span class="line">  <span class="keyword">var</span> yMax = -<span class="literal">Infinity</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; length; i += PPN) &#123;</span><br><span class="line">    x = NodeMatrix[i + NODE_X];</span><br><span class="line">    y = NodeMatrix[i + NODE_Y];</span><br><span class="line">    size = NodeMatrix[i + NODE_SIZE] * ratio + margin;</span><br><span class="line"></span><br><span class="line">    xMin = <span class="built_in">Math</span>.min(xMin, x - size);</span><br><span class="line">    xMax = <span class="built_in">Math</span>.max(xMax, x + size);</span><br><span class="line">    yMin = <span class="built_in">Math</span>.min(yMin, y - size);</span><br><span class="line">    yMax = <span class="built_in">Math</span>.max(yMax, y + size);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> width = xMax - xMin;</span><br><span class="line">  <span class="keyword">var</span> height = yMax - yMin;</span><br><span class="line">  <span class="keyword">var</span> xCenter = (xMin + xMax) / <span class="number">2</span>;</span><br><span class="line">  <span class="keyword">var</span> yCenter = (yMin + yMax) / <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">  xMin = xCenter - (expansion * width) / <span class="number">2</span>;</span><br><span class="line">  xMax = xCenter + (expansion * width) / <span class="number">2</span>;</span><br><span class="line">  yMin = yCenter - (expansion * height) / <span class="number">2</span>;</span><br><span class="line">  yMax = yCenter + (expansion * height) / <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Building grid</span></span><br><span class="line">  <span class="keyword">var</span> grid = <span class="keyword">new</span> <span class="built_in">Array</span>(gridSize * gridSize),</span><br><span class="line">    gridLength = grid.length,</span><br><span class="line">    c;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (c = <span class="number">0</span>; c &lt; gridLength; c++) grid[c] = [];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> nxMin, nxMax, nyMin, nyMax;</span><br><span class="line">  <span class="keyword">var</span> xMinBox, xMaxBox, yMinBox, yMaxBox;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> col, row;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; length; i += PPN) &#123;</span><br><span class="line">    x = NodeMatrix[i + NODE_X];</span><br><span class="line">    y = NodeMatrix[i + NODE_Y];</span><br><span class="line">    size = NodeMatrix[i + NODE_SIZE] * ratio + margin;</span><br><span class="line"></span><br><span class="line">    nxMin = x - size;</span><br><span class="line">    nxMax = x + size;</span><br><span class="line">    nyMin = y - size;</span><br><span class="line">    nyMax = y + size;</span><br><span class="line"></span><br><span class="line">    xMinBox = <span class="built_in">Math</span>.floor((gridSize * (nxMin - xMin)) / (xMax - xMin));</span><br><span class="line">    xMaxBox = <span class="built_in">Math</span>.floor((gridSize * (nxMax - xMin)) / (xMax - xMin));</span><br><span class="line">    yMinBox = <span class="built_in">Math</span>.floor((gridSize * (nyMin - yMin)) / (yMax - yMin));</span><br><span class="line">    yMaxBox = <span class="built_in">Math</span>.floor((gridSize * (nyMax - yMin)) / (yMax - yMin));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (col = xMinBox; col &lt;= xMaxBox; col++) &#123;</span><br><span class="line">      <span class="keyword">for</span> (row = yMinBox; row &lt;= yMaxBox; row++) &#123;</span><br><span class="line">        grid[col * gridSize + row].push(i);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Computing collisions</span></span><br><span class="line">  <span class="keyword">var</span> cell;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> collisions = <span class="keyword">new</span> <span class="built_in">Set</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> n1, n2, x1, x2, y1, y2, s1, s2, h;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> xDist, yDist, dist, collision;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (c = <span class="number">0</span>; c &lt; gridLength; c++) &#123;</span><br><span class="line">    cell = grid[c];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>, l = cell.length; i &lt; l; i++) &#123;</span><br><span class="line">      n1 = cell[i];</span><br><span class="line"></span><br><span class="line">      x1 = NodeMatrix[n1 + NODE_X];</span><br><span class="line">      y1 = NodeMatrix[n1 + NODE_Y];</span><br><span class="line">      s1 = NodeMatrix[n1 + NODE_SIZE];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (j = i + <span class="number">1</span>; j &lt; l; j++) &#123;</span><br><span class="line">        n2 = cell[j];</span><br><span class="line">        h = hashPair(n1, n2);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (gridLength &gt; <span class="number">1</span> &amp;&amp; collisions.has(h)) <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (gridLength &gt; <span class="number">1</span>) collisions.add(h);</span><br><span class="line"></span><br><span class="line">        x2 = NodeMatrix[n2 + NODE_X];</span><br><span class="line">        y2 = NodeMatrix[n2 + NODE_Y];</span><br><span class="line">        s2 = NodeMatrix[n2 + NODE_SIZE];</span><br><span class="line"></span><br><span class="line">        xDist = x2 - x1;</span><br><span class="line">        yDist = y2 - y1;</span><br><span class="line">        dist = <span class="built_in">Math</span>.sqrt(xDist * xDist + yDist * yDist);</span><br><span class="line">        collision = dist &lt; s1 * ratio + margin + (s2 * ratio + margin);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (collision) &#123;</span><br><span class="line">          converged = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">          n2 = (n2 / PPN) | <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">          <span class="keyword">if</span> (dist &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            deltaX[n2] += (xDist / dist) * (<span class="number">1</span> + s1);</span><br><span class="line">            deltaY[n2] += (yDist / dist) * (<span class="number">1</span> + s1);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Nodes are on the exact same spot, we need to jitter a bit</span></span><br><span class="line">            deltaX[n2] += width * jitter();</span><br><span class="line">            deltaY[n2] += height * jitter();</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>, j = <span class="number">0</span>; i &lt; length; i += PPN, j++) &#123;</span><br><span class="line">    NodeMatrix[i + NODE_X] += deltaX[j] * <span class="number">0.1</span> * speed;</span><br><span class="line">    NodeMatrix[i + NODE_Y] += deltaY[j] * <span class="number">0.1</span> * speed;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> &#123; <span class="attr">converged</span>: converged &#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>然后我使用了 wasm-pack 构建了 rust 项目，并写代码如下。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">mod</span> utils;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> std::collections::HashSet;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> rand::prelude::*;</span><br><span class="line"><span class="keyword">use</span> wasm_bindgen::prelude::*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> js_sys::Float32Array;</span><br><span class="line"></span><br><span class="line"><span class="comment">// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global</span></span><br><span class="line"><span class="comment">// allocator.</span></span><br><span class="line"><span class="meta">#[cfg(feature = <span class="meta-string">"wee_alloc"</span>)]</span></span><br><span class="line"><span class="meta">#[global_allocator]</span></span><br><span class="line"><span class="keyword">static</span> ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> NODE_X: <span class="built_in">usize</span> = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">const</span> NODE_Y: <span class="built_in">usize</span> = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">const</span> NODE_SIZE: <span class="built_in">usize</span> = <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> PPN: <span class="built_in">u32</span> = <span class="number">3</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">hashPair</span></span>(a: <span class="built_in">usize</span>, b: <span class="built_in">usize</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">format!</span>(<span class="string">"&#123;:?&#125;§&#123;:?&#125;"</span>, a, b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">jitter</span></span>() -&gt; <span class="built_in">f32</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> rng = rand::thread_rng();</span><br><span class="line">    <span class="keyword">let</span> y: <span class="built_in">f32</span> = rng.gen();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0.01</span> * (<span class="number">0.5</span> - y);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Res</span></span> &#123;</span><br><span class="line">    matrix: <span class="built_in">Vec</span>&lt;<span class="built_in">f32</span>&gt;,</span><br><span class="line">    converged: <span class="built_in">bool</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">impl</span> Res &#123;</span><br><span class="line">    <span class="meta">#[wasm_bindgen(constructor)]</span></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(matrix: <span class="built_in">Vec</span>&lt;<span class="built_in">f32</span>&gt;, converged: <span class="built_in">bool</span>) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        Res &#123; matrix, converged &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">get_node_matrix</span></span>(&amp;<span class="keyword">self</span>) -&gt; Float32Array &#123;</span><br><span class="line">        <span class="keyword">unsafe</span> &#123; Float32Array::view(&amp;<span class="keyword">self</span>.matrix) &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">iterate</span></span>(</span><br><span class="line">    margin: <span class="built_in">f32</span>,</span><br><span class="line">    ratio: <span class="built_in">f32</span>,</span><br><span class="line">    expansion: <span class="built_in">f32</span>,</span><br><span class="line">    grid_size: <span class="built_in">f32</span>,</span><br><span class="line">    speed: <span class="built_in">f32</span>,</span><br><span class="line">    <span class="keyword">mut</span> node_matrix: <span class="built_in">Vec</span>&lt;<span class="built_in">f32</span>&gt;,</span><br><span class="line">) -&gt; Res &#123;</span><br><span class="line">    <span class="keyword">let</span> length: <span class="built_in">u32</span> = node_matrix.len() <span class="keyword">as</span> <span class="built_in">u32</span>;</span><br><span class="line">    <span class="keyword">let</span> order = ((length / PPN) | <span class="number">0</span>) <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> delta_x = <span class="built_in">vec!</span>[<span class="number">0.0</span> <span class="keyword">as</span> <span class="built_in">f32</span>; order];</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> delta_y = <span class="built_in">vec!</span>[<span class="number">0.0</span> <span class="keyword">as</span> <span class="built_in">f32</span>; order];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> x_min = <span class="built_in">f32</span>::INFINITY;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> y_min = <span class="built_in">f32</span>::INFINITY;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> x_max = <span class="built_in">f32</span>::NEG_INFINITY;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> y_max = <span class="built_in">f32</span>::NEG_INFINITY;</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> i = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">while</span> i &lt; length &#123;</span><br><span class="line">            <span class="keyword">let</span> index = i <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line">            <span class="keyword">let</span> x = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_X) &#125;;</span><br><span class="line">            <span class="keyword">let</span> y = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_Y) &#125;;</span><br><span class="line">            <span class="keyword">let</span> size = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_SIZE) * ratio + margin &#125;;</span><br><span class="line"></span><br><span class="line">            x_min = <span class="built_in">f32</span>::min(x_min, x - size);</span><br><span class="line"></span><br><span class="line">            y_min = <span class="built_in">f32</span>::min(y_min, y - size);</span><br><span class="line"></span><br><span class="line">            x_max = <span class="built_in">f32</span>::max(x_max, x + size);</span><br><span class="line"></span><br><span class="line">            y_max = <span class="built_in">f32</span>::max(y_max, x + size);</span><br><span class="line"></span><br><span class="line">            i += PPN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> width = x_max - x_min;</span><br><span class="line">    <span class="keyword">let</span> height = y_max - y_min;</span><br><span class="line">    <span class="keyword">let</span> x_center = (x_max + x_min) / <span class="number">2.0</span>;</span><br><span class="line">    <span class="keyword">let</span> y_center = (y_max + y_min) / <span class="number">2.0</span>;</span><br><span class="line"></span><br><span class="line">    x_min = (x_center <span class="keyword">as</span> <span class="built_in">f64</span> - (expansion <span class="keyword">as</span> <span class="built_in">f64</span> * width <span class="keyword">as</span> <span class="built_in">f64</span>) / <span class="number">2.0</span>) <span class="keyword">as</span> <span class="built_in">f32</span>;</span><br><span class="line">    x_max = (x_center <span class="keyword">as</span> <span class="built_in">f64</span> + (expansion <span class="keyword">as</span> <span class="built_in">f64</span> * width <span class="keyword">as</span> <span class="built_in">f64</span>) / <span class="number">2.0</span>) <span class="keyword">as</span> <span class="built_in">f32</span>;</span><br><span class="line">    y_min = (y_center <span class="keyword">as</span> <span class="built_in">f64</span> - (expansion <span class="keyword">as</span> <span class="built_in">f64</span> * height <span class="keyword">as</span> <span class="built_in">f64</span>) / <span class="number">2.0</span>) <span class="keyword">as</span> <span class="built_in">f32</span>;</span><br><span class="line">    y_max = (y_center <span class="keyword">as</span> <span class="built_in">f64</span> + (expansion <span class="keyword">as</span> <span class="built_in">f64</span> * height <span class="keyword">as</span> <span class="built_in">f64</span>) / <span class="number">2.0</span>) <span class="keyword">as</span> <span class="built_in">f32</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> grid_length = (grid_size * grid_size) <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> grid = <span class="built_in">vec!</span>[<span class="built_in">Vec</span>::&lt;<span class="built_in">u32</span>&gt;::new(); grid_length];</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">while</span> i &lt; length &#123;</span><br><span class="line">            <span class="keyword">let</span> index = i <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line">            <span class="keyword">let</span> x = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_X) &#125;;</span><br><span class="line">            <span class="keyword">let</span> y = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_Y) &#125;;</span><br><span class="line">            <span class="keyword">let</span> size = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_SIZE) * ratio + margin &#125;;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> nx_min = x - size;</span><br><span class="line">            <span class="keyword">let</span> nx_max = x + size;</span><br><span class="line">            <span class="keyword">let</span> ny_min = y - size;</span><br><span class="line">            <span class="keyword">let</span> ny_max = y + size;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> x_min_box = <span class="built_in">f32</span>::floor((grid_size * (nx_min - x_min)) / (x_max - x_min));</span><br><span class="line">            <span class="keyword">let</span> x_max_box = <span class="built_in">f32</span>::floor((grid_size * (nx_max - x_min)) / (x_max - x_min));</span><br><span class="line">            <span class="keyword">let</span> y_min_box = <span class="built_in">f32</span>::floor((grid_size * (ny_min - y_min)) / (y_max - y_min));</span><br><span class="line">            <span class="keyword">let</span> y_max_box = <span class="built_in">f32</span>::floor((grid_size * (ny_max - y_min)) / (y_max - y_min));</span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">let</span> <span class="keyword">mut</span> col = x_min_box;</span><br><span class="line">                <span class="keyword">while</span> col &lt;= x_max_box &#123;</span><br><span class="line">                    <span class="keyword">let</span> <span class="keyword">mut</span> row = y_min_box;</span><br><span class="line">                    <span class="keyword">while</span> row &lt;= y_max_box &#123;</span><br><span class="line">                        grid[(col * grid_size + row) <span class="keyword">as</span> <span class="built_in">usize</span>].push(i);</span><br><span class="line">                        row += <span class="number">1.0</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    col += <span class="number">1.0</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            i += PPN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> converged = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> collisions = HashSet::&lt;<span class="built_in">String</span>&gt;::new();</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> c = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">while</span> c &lt; grid_length &#123;</span><br><span class="line">            <span class="keyword">let</span> cell = <span class="keyword">unsafe</span> &#123; grid.get_unchecked(c) &#125;;</span><br><span class="line">            <span class="keyword">let</span> cell_length = cell.len() <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> i = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">while</span> i &lt; cell_length &#123;</span><br><span class="line">                <span class="keyword">let</span> n1 = <span class="keyword">unsafe</span> &#123; *cell.get_unchecked(i) <span class="keyword">as</span> <span class="built_in">usize</span> &#125;;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">let</span> x1 = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(n1 + NODE_X) &#125;;</span><br><span class="line">                <span class="keyword">let</span> y1 = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(n1 + NODE_Y) &#125;;</span><br><span class="line">                <span class="keyword">let</span> s1 = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(n1 + NODE_SIZE) &#125;;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">let</span> <span class="keyword">mut</span> j = i + <span class="number">1</span>;</span><br><span class="line">                <span class="keyword">while</span> j &lt; cell_length &#123;</span><br><span class="line">                    <span class="keyword">let</span> n2 = <span class="keyword">unsafe</span> &#123; *cell.get_unchecked(j) <span class="keyword">as</span> <span class="built_in">usize</span> &#125;;</span><br><span class="line">                    <span class="keyword">let</span> h = hashPair(n1, n2);</span><br><span class="line">                    <span class="keyword">if</span> grid_length &gt; <span class="number">1</span> &amp;&amp; collisions.contains(&amp;h) &#123;</span><br><span class="line">                        j += <span class="number">1</span>;</span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="keyword">if</span> grid_length &gt; <span class="number">1</span> &#123;</span><br><span class="line">                        collisions.insert(h);</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="keyword">let</span> x2 = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(n2 + NODE_X) &#125;;</span><br><span class="line">                    <span class="keyword">let</span> y2 = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(n2 + NODE_Y) &#125;;</span><br><span class="line">                    <span class="keyword">let</span> s2 = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(n2 + NODE_SIZE) &#125;;</span><br><span class="line"></span><br><span class="line">                    <span class="keyword">let</span> x_dist = x2 - x1;</span><br><span class="line">                    <span class="keyword">let</span> y_dist = y2 - y1;</span><br><span class="line">                    <span class="keyword">let</span> dist = <span class="built_in">f32</span>::sqrt(x_dist * x_dist + y_dist * y_dist);</span><br><span class="line">                    <span class="keyword">let</span> collision = dist &lt; s1 * ratio + margin + (s2 * ratio + margin);</span><br><span class="line">                    <span class="keyword">if</span> collision &#123;</span><br><span class="line">                        converged = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">                        <span class="keyword">let</span> n2 = ((n2 <span class="keyword">as</span> <span class="built_in">u32</span> / PPN) | <span class="number">0</span>) <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line">                        <span class="keyword">if</span> dist &gt; <span class="number">0.0</span> &#123;</span><br><span class="line">                            <span class="keyword">unsafe</span> &#123;</span><br><span class="line">                                *delta_x.get_unchecked_mut(n2) += (x_dist / dist) * (<span class="number">1.0</span> + s1);</span><br><span class="line">                                *delta_y.get_unchecked_mut(n2) += (y_dist / dist) * (<span class="number">1.0</span> + s1);</span><br><span class="line">                            &#125;;</span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                            <span class="keyword">unsafe</span> &#123;</span><br><span class="line">                                *delta_x.get_unchecked_mut(n2) += width * jitter();</span><br><span class="line">                                *delta_y.get_unchecked_mut(n2) += height * jitter();</span><br><span class="line">                            &#125;;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    j += <span class="number">1</span>;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                i += <span class="number">1</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            c += <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> j = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">while</span> i &lt; length &#123;</span><br><span class="line">            <span class="keyword">let</span> index = i <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line">            <span class="keyword">unsafe</span> &#123;</span><br><span class="line">                *node_matrix.get_unchecked_mut(index + NODE_X) +=</span><br><span class="line">                    *delta_x.get_unchecked(j) * <span class="number">0.1</span> * speed;</span><br><span class="line">                *node_matrix.get_unchecked_mut(index + NODE_Y) +=</span><br><span class="line">                    *delta_y.get_unchecked(j) * <span class="number">0.1</span> * speed;</span><br><span class="line">            &#125;</span><br><span class="line">            i += PPN;</span><br><span class="line">            j += <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Res &#123;</span><br><span class="line">        matrix: node_matrix,</span><br><span class="line">        converged,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>将 js 文件更改为</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> matrix;</span><br><span class="line"></span><br><span class="line"><span class="comment">// dosomething...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (settings.wasm) &#123;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">    <span class="keyword">var</span> res = test_iterate(</span><br><span class="line">      settings.margin,</span><br><span class="line">      settings.ratio,</span><br><span class="line">      settings.expansion,</span><br><span class="line">      settings.gridSize,</span><br><span class="line">      settings.speed,</span><br><span class="line">      matrix</span><br><span class="line">    );</span><br><span class="line">    converged = res.converged;</span><br><span class="line">    matrix = res.get_node_matrix();</span><br><span class="line">  &#125;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">    converged = iterate(settings, matrix).converged;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// dosomething...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> matrix;</span><br></pre></td></tr></table></figure>
+<p>然后我跑了一下 benchmark，发现 js 版本用时 700ms，wasm 版本用时 1.4s，wasm 比 js 跑的慢太多了，于是我开始了漫漫优化之旅。</p>
+<h1 id="不要跟-js-比拼字符串操作"><a href="#不要跟-js-比拼字符串操作" class="headerlink" title="不要跟 js 比拼字符串操作"></a>不要跟 js 比拼字符串操作</h1><p>逐行断点后，我发现，wasm 的主要性能消耗在了 hashPair 函数上，而他的目的是为了制作 set 的 hash 值，在 js 中，并没有元组这个概念，所以我们需要拼字符串作为 hash，而 rust 中有元组，我们可以使用元组作为 hash 值存入 set 中。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">hashPair</span></span>(a: <span class="built_in">usize</span>, b: <span class="built_in">usize</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">format!</span>(<span class="string">"&#123;:?&#125;§&#123;:?&#125;"</span>, a, b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> collisions = HashSet::&lt;<span class="built_in">String</span>&gt;::new();</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> h = hashPair(n1, n2);</span><br><span class="line"><span class="keyword">if</span> grid_length &gt; <span class="number">1</span> &amp;&amp; collisions.contains(&amp;h) &#123;</span><br><span class="line">    j += <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 删除hashPair，并更改为元组</span></span><br><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> collisions = HashSet::&lt;(<span class="built_in">usize</span>, <span class="built_in">usize</span>)&gt;::new();</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> h = (n1, n2);</span><br><span class="line"><span class="keyword">if</span> grid_length &gt; <span class="number">1</span> &amp;&amp; collisions.contains(&amp;h) &#123;</span><br><span class="line">    j += <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>效果显著，直接从 1.4s 降低至 240ms。</p>
+<h1 id="使用指针减少通信间的数据转换"><a href="#使用指针减少通信间的数据转换" class="headerlink" title="使用指针减少通信间的数据转换"></a>使用指针减少通信间的数据转换</h1><p>众所周知，js 的数据结构和 rust 的不相同，而我们的初版中存在大量的 js 和 rust 的数据交互，这样会频繁的将 js 的<code>Float32Array</code>与 rust 的<code>Vec&lt;f32&gt;</code>转换，这里会耗费一些性能：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> matrix;</span><br><span class="line"></span><br><span class="line"><span class="comment">// dosomething...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (settings.wasm) &#123;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">    <span class="keyword">var</span> res = test_iterate(</span><br><span class="line">      settings.margin,</span><br><span class="line">      settings.ratio,</span><br><span class="line">      settings.expansion,</span><br><span class="line">      settings.gridSize,</span><br><span class="line">      settings.speed,</span><br><span class="line">      matrix</span><br><span class="line">    );</span><br><span class="line">    converged = res.converged;</span><br><span class="line">    matrix = res.get_node_matrix();</span><br><span class="line">  &#125;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">    converged = iterate(settings, matrix).converged;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// dosomething...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> matrix;</span><br></pre></td></tr></table></figure>
+<p>我们可以使用传递指针地址的方式来减少<code>Float32Array</code>与 rust 的<code>Vec&lt;f32&gt;</code>转换带来的性能损失。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#![feature(box_syntax)]</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 储存matrix和converged的对象</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Context</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> matrix: <span class="built_in">Vec</span>&lt;<span class="built_in">f32</span>&gt;,</span><br><span class="line">    <span class="keyword">pub</span> converged: <span class="built_in">bool</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Context &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(matrix: <span class="built_in">Vec</span>&lt;<span class="built_in">f32</span>&gt;) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        Context &#123;</span><br><span class="line">            matrix,</span><br><span class="line">            converged: <span class="literal">true</span>,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取Context的指针地址</span></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">create_computer_ctx</span></span>(x: <span class="built_in">Vec</span>&lt;<span class="built_in">f32</span>&gt;) -&gt; <span class="built_in">usize</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> ctx = Context::new(x);</span><br><span class="line">    <span class="built_in">Box</span>::into_raw(<span class="keyword">box</span> ctx) <span class="keyword">as</span> _</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 根据Context的指针地址获取Float32Array</span></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">get_node_matrix</span></span>(ctx: *<span class="keyword">mut</span> Context) -&gt; Float32Array &#123;</span><br><span class="line">    <span class="keyword">let</span> ctx = <span class="keyword">unsafe</span> &#123; &amp;<span class="keyword">mut</span> *ctx &#125;;</span><br><span class="line">    <span class="keyword">unsafe</span> &#123; Float32Array::view(&amp;ctx.matrix) &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 根据Context的指针地址获取converged</span></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">get_converged</span></span>(ctx: *<span class="keyword">mut</span> Context) -&gt; <span class="built_in">bool</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> ctx = <span class="keyword">unsafe</span> &#123; &amp;<span class="keyword">mut</span> *ctx &#125;;</span><br><span class="line">    ctx.converged</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#[wasm_bindgen]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">iterate</span></span>(</span><br><span class="line">    margin: <span class="built_in">f32</span>,</span><br><span class="line">    ratio: <span class="built_in">f32</span>,</span><br><span class="line">    expansion: <span class="built_in">f32</span>,</span><br><span class="line">    grid_size: <span class="built_in">f32</span>,</span><br><span class="line">    speed: <span class="built_in">f32</span>,</span><br><span class="line">    ctx: *<span class="keyword">mut</span> Context, <span class="comment">// Context指针地址</span></span><br><span class="line">) &#123;</span><br><span class="line">    <span class="keyword">let</span> ctx = <span class="keyword">unsafe</span> &#123; &amp;<span class="keyword">mut</span> *ctx &#125;; <span class="comment">// 根据指针地址获取Context对象</span></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> node_matrix = &amp;<span class="keyword">mut</span> ctx.matrix;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>js 侧修改为</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (settings.wasm) &#123;</span><br><span class="line">  <span class="comment">// 获取指针值</span></span><br><span class="line">  <span class="keyword">var</span> ctxPtr = create_computer_ctx(matrix);</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">    test_iterate(</span><br><span class="line">      settings.margin,</span><br><span class="line">      settings.ratio,</span><br><span class="line">      settings.expansion,</span><br><span class="line">      settings.gridSize,</span><br><span class="line">      settings.speed,</span><br><span class="line">      ctxPtr</span><br><span class="line">    );</span><br><span class="line">    converged = get_converged(ctxPtr);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 根据指针地址获取matrix</span></span><br><span class="line">  matrix = get_node_matrix(ctxPtr);</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; maxIterations &amp;&amp; !converged; i++) &#123;</span><br><span class="line">    converged = iterate(settings, matrix).converged;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>需要注意的是，想要使用<code>#![feature(box_syntax)]</code>，需要在<code>cargo.toml</code>中，将 wasm-bindgen 支持 nightly</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">wasm-bindgen</span> = &#123; version = <span class="string">"=0.2.73"</span>, features = [<span class="string">"nightly"</span>] &#125;</span><br></pre></td></tr></table></figure>
+<p>wasm-pack 并不支持 nightly，所以你需要去运行<code>rustup run nightly $HOME/.cargo/bin/wasm-pack &quot;build&quot; --release --target nodejs</code>才能构建成功<br>测试后有了 10%的性能提升。</p>
+<h1 id="过于复杂的宏并不好"><a href="#过于复杂的宏并不好" class="headerlink" title="过于复杂的宏并不好"></a>过于复杂的宏并不好</h1><p>我在创建一个二维数组时，采用的是宏来编写</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> grid = <span class="built_in">vec!</span>[<span class="built_in">Vec</span>::&lt;<span class="built_in">u32</span>&gt;::new(); grid_length];</span><br></pre></td></tr></table></figure>
+<p>但是当我手动编写后，性能提升了 4%</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> grid = <span class="built_in">Vec</span>::&lt;<span class="built_in">Vec</span>&lt;<span class="built_in">u32</span>&gt;&gt;::new();</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> n <span class="keyword">in</span> <span class="number">0</span>..grid_length &#123;</span><br><span class="line">    grid.push(<span class="built_in">Vec</span>::&lt;<span class="built_in">u32</span>&gt;::new());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="用-SIMD-来榨干你的-CPU"><a href="#用-SIMD-来榨干你的-CPU" class="headerlink" title="用 SIMD 来榨干你的 CPU"></a>用 SIMD 来榨干你的 CPU</h1><p>SIMD（Single Instruction Multiple Data）中文为单指令多数据，它是一种特的 CPU 指令，能够实现数据的并行处理，在音视频和图像处理领域有广泛的使用。与之相反的概念是 SISD （Single Instruction Single Data），每次数据计算都需要执行一次指令。<br>简单来说，之前需要四条指令才能完成的计算，使用 SIMD 计算只需要一条指令即可完成：</p>
+<p><img src="/image/rust-wasm/simd.png" alt="simd"><br>遗憾的是 js 并不支持 SIMD，但是在 wasm 中我们却可以使用。<br>我们可以在我们的循环计算中使用 SIMD 来优化</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#![feature(box_syntax, wasm_simd)]</span></span><br><span class="line"><span class="meta">#[cfg(feature = <span class="meta-string">"simd"</span>)]</span></span><br><span class="line"><span class="keyword">use</span> std::arch::wasm32::*;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">while</span> i &lt; length &#123;</span><br><span class="line">            <span class="keyword">let</span> index = i <span class="keyword">as</span> <span class="built_in">usize</span>;</span><br><span class="line">            <span class="keyword">let</span> x = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_X) &#125;;</span><br><span class="line">            <span class="keyword">let</span> y = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_Y) &#125;;</span><br><span class="line">            <span class="keyword">let</span> size = <span class="keyword">unsafe</span> &#123; *node_matrix.get_unchecked(index + NODE_SIZE) * ratio + margin &#125;;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> nx_min = x - size;</span><br><span class="line">            <span class="keyword">let</span> nx_max = x + size;</span><br><span class="line">            <span class="keyword">let</span> ny_min = y - size;</span><br><span class="line">            <span class="keyword">let</span> ny_max = y + size;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// let x_min_box = f32::floor((grid_size * (nx_min - x_min)) / (x_max - x_min));</span></span><br><span class="line">            <span class="comment">// let x_max_box = f32::floor((grid_size * (nx_max - x_min)) / (x_max - x_min));</span></span><br><span class="line">            <span class="comment">// let y_min_box = f32::floor((grid_size * (ny_min - y_min)) / (y_max - y_min));</span></span><br><span class="line">            <span class="comment">// let y_max_box = f32::floor((grid_size * (ny_max - y_min)) / (y_max - y_min));</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> n = f32x4(nx_min, nx_max, ny_min, ny_max);</span><br><span class="line">            <span class="keyword">let</span> size = f32x4(grid_size, grid_size, grid_size, grid_size);</span><br><span class="line">            <span class="keyword">let</span> f = f32x4(nx_min, nx_max, ny_min, ny_max);</span><br><span class="line">            <span class="keyword">let</span> min = f32x4(x_min, x_min, y_min, y_min);</span><br><span class="line">            <span class="keyword">let</span> max = f32x4(x_max, x_max, y_max, y_max);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> n_s_i = f32x4_sub(n, min);</span><br><span class="line">            <span class="keyword">let</span> a_s_i = f32x4_sub(max, min);</span><br><span class="line">            <span class="keyword">let</span> s_m_n_s_i = f32x4_mul(size, n_s_i);</span><br><span class="line">            <span class="keyword">let</span> d = f32x4_div(s_m_n_s_i, a_s_i);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> (x_min_box, x_max_box, y_min_box, y_max_box) = <span class="keyword">unsafe</span> &#123;</span><br><span class="line">                (</span><br><span class="line">                    f32x4_extract_lane::&lt;<span class="number">0</span>&gt;(d),</span><br><span class="line">                    f32x4_extract_lane::&lt;<span class="number">1</span>&gt;(d),</span><br><span class="line">                    f32x4_extract_lane::&lt;<span class="number">2</span>&gt;(d),</span><br><span class="line">                    f32x4_extract_lane::&lt;<span class="number">3</span>&gt;(d),</span><br><span class="line">                )</span><br><span class="line">            &#125;;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> x_min_box = <span class="built_in">f32</span>::floor(x_min_box);</span><br><span class="line">            <span class="keyword">let</span> x_max_box = <span class="built_in">f32</span>::floor(x_max_box);</span><br><span class="line">            <span class="keyword">let</span> y_min_box = <span class="built_in">f32</span>::floor(y_min_box);</span><br><span class="line">            <span class="keyword">let</span> y_max_box = <span class="built_in">f32</span>::floor(y_max_box);</span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">let</span> <span class="keyword">mut</span> col = x_min_box;</span><br><span class="line">                <span class="keyword">while</span> col &lt;= x_max_box &#123;</span><br><span class="line">                    <span class="keyword">let</span> <span class="keyword">mut</span> row = y_min_box;</span><br><span class="line">                    <span class="keyword">while</span> row &lt;= y_max_box &#123;</span><br><span class="line">                        grid[(col * grid_size + row) <span class="keyword">as</span> <span class="built_in">usize</span>].push(i);</span><br><span class="line">                        row += <span class="number">1.0</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    col += <span class="number">1.0</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            i += PPN;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>当然，这个项目的这种计算较少，速度也仅仅只提升了 5%左右</p>
+<h1 id="更快的数据结构"><a href="#更快的数据结构" class="headerlink" title="更快的数据结构"></a>更快的数据结构</h1><p>set 的查询，导致了 wasm 的速度降低，在 rust 我们可以选用更好的 set 结构，来加速我们的 set 查询</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> tinyset::Set;</span><br><span class="line"></span><br><span class="line"><span class="comment">// let mut collisions = HashSet::&lt;(usize, usize)&gt;::new();</span></span><br><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> collisions = Set::&lt;(<span class="built_in">usize</span>, <span class="built_in">usize</span>)&gt;::new();</span><br></pre></td></tr></table></figure>
+<p>替换后，我们的 wasm 又快了一倍</p>
+<h1 id="更小的-WASM"><a href="#更小的-WASM" class="headerlink" title="更小的 WASM"></a>更小的 WASM</h1><p>其实当你使用 wasm-pack 起了一个 wasm 的项目后，他会自动帮助你引入一个 wee_alloc 的包，而一般他会位于你的项目顶部</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#[cfg(feature = <span class="meta-string">"wee_alloc"</span>)]</span></span><br><span class="line"><span class="meta">#[global_allocator]</span></span><br><span class="line"><span class="keyword">static</span> ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;</span><br></pre></td></tr></table></figure>
+<p>这样，当你运行<code>wasm-pack build --features wee_alloc</code>时会打包一个更小的 wasm。<br>不过我们的项目因为使用了 nightly，所以我们的运行方式是<code>rustup run nightly $HOME/.cargo/bin/wasm-pack &quot;build&quot; --release --target nodejs -- --features wee_alloc</code></p>
+<h1 id="有效果但没在项目中用到的"><a href="#有效果但没在项目中用到的" class="headerlink" title="有效果但没在项目中用到的"></a>有效果但没在项目中用到的</h1><ul>
+<li>昂贵的 f32::is_finite()<ul>
+<li>这个函数的底层实现逻辑是</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">self</span>.abs_private() &lt; Self::INFINITY</span><br><span class="line"></span><br><span class="line"><span class="built_in">f32</span>::from_bits(<span class="keyword">self</span>.to_bits() &amp; <span class="number">0x7fff_ffff</span>)</span><br></pre></td></tr></table></figure>
+<p>如果你能用与 Linux 的 perf 分析工具检测的话就会发现，f32::is_finite()的消耗时间较多，具体原因不详，可能与浮点数跟 xmm 寄存器的处理有关系，如果你能保证你的 f32 是&gt;0 的话，请使用<code>== std::f32::INFINITY</code>来进行处理</p>
+<ul>
+<li>不太行的 f32x4.max<ul>
+<li>f32x4.max 会校验 NaN 的问题，这会导致计算速度变慢，你可以使用 f32x4.lt/f32x4.or 或者未来将支持的 f32x4.pmax 来规避这个问题</li>
+</ul>
+</li>
+</ul>
+<h1 id="没了"><a href="#没了" class="headerlink" title="没了"></a>没了</h1><p>真没了，就这点东西，贼简单。<br>另外，其实在这种 js 与 WebAssembly 通信较少的场景下，使用 WebAssembly 进行加速，效果还是比较显著的，如果通信比较频繁，我个人推荐使用第三章的指针地址传递的方式来优化，不过效果如何，还待检测。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/WebAssembly/" rel="tag"># WebAssembly</a>
+          
+            <a href="/tags/rust/" rel="tag"># rust</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2022/05/17/200行代码实现极简deno/" rel="next" title="200行代码实现极简deno">
+                <i class="fa fa-chevron-left"></i> 200行代码实现极简deno
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2022/08/29/deno架构学习与思考/" rel="prev" title="deno架构学习与思考">
+                deno架构学习与思考 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">29</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#初版构建"><span class="nav-number">2.</span> <span class="nav-text">初版构建</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#不要跟-js-比拼字符串操作"><span class="nav-number">3.</span> <span class="nav-text">不要跟 js 比拼字符串操作</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#使用指针减少通信间的数据转换"><span class="nav-number">4.</span> <span class="nav-text">使用指针减少通信间的数据转换</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#过于复杂的宏并不好"><span class="nav-number">5.</span> <span class="nav-text">过于复杂的宏并不好</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#用-SIMD-来榨干你的-CPU"><span class="nav-number">6.</span> <span class="nav-text">用 SIMD 来榨干你的 CPU</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#更快的数据结构"><span class="nav-number">7.</span> <span class="nav-text">更快的数据结构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#更小的-WASM"><span class="nav-number">8.</span> <span class="nav-text">更小的 WASM</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#有效果但没在项目中用到的"><span class="nav-number">9.</span> <span class="nav-text">有效果但没在项目中用到的</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#没了"><span class="nav-number">10.</span> <span class="nav-text">没了</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

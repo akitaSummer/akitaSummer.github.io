@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言redis 是后端常用的缓存数据库，他是一种基于内存的数据库，对数据的读写操作都是在内存中完成，因此读写速度非常快，常用于缓存，消息队列、分布式锁等场景。redis 设计是单线程的，但是却能做到高性能完成读写，学习其中的架构设计，对于我们同是单线程的 JavaScript 程序设计会有一定的帮助 整体流程总览本文参考的是redis2.6 版本的架构设计 流程图：： 简单来说，redis 在启动">
+<meta name="keywords" content="golang,redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis架构设计学习">
+<meta property="og:url" content="https://akitaSummer.github.io/2023/01/28/openfaas架构学习 copy/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="前言redis 是后端常用的缓存数据库，他是一种基于内存的数据库，对数据的读写操作都是在内存中完成，因此读写速度非常快，常用于缓存，消息队列、分布式锁等场景。redis 设计是单线程的，但是却能做到高性能完成读写，学习其中的架构设计，对于我们同是单线程的 JavaScript 程序设计会有一定的帮助 整体流程总览本文参考的是redis2.6 版本的架构设计 流程图：： 简单来说，redis 在启动">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/go-redis/architecture.png">
+<meta property="og:updated_time" content="2023-03-03T10:12:44.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="redis架构设计学习">
+<meta name="twitter:description" content="前言redis 是后端常用的缓存数据库，他是一种基于内存的数据库，对数据的读写操作都是在内存中完成，因此读写速度非常快，常用于缓存，消息队列、分布式锁等场景。redis 设计是单线程的，但是却能做到高性能完成读写，学习其中的架构设计，对于我们同是单线程的 JavaScript 程序设计会有一定的帮助 整体流程总览本文参考的是redis2.6 版本的架构设计 流程图：： 简单来说，redis 在启动">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/go-redis/architecture.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2023/01/28/openfaas架构学习 copy/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>redis架构设计学习 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2023/01/28/openfaas架构学习 copy/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">redis架构设计学习
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2023-01-28 01:23:28" itemprop="dateCreated datePublished" datetime="2023-01-28T01:23:28+08:00">2023-01-28</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2023-03-03 18:12:44" itemprop="dateModified" datetime="2023-03-03T18:12:44+08:00">2023-03-03</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2023/01/28/openfaas架构学习 copy/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2023/01/28/openfaas架构学习 copy/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>redis 是后端常用的缓存数据库，他是一种基于内存的数据库，对数据的读写操作都是在内存中完成，因此读写速度非常快，常用于缓存，消息队列、分布式锁等场景。redis 设计是单线程的，但是却能做到高性能完成读写，学习其中的架构设计，对于我们同是单线程的 JavaScript 程序设计会有一定的帮助</p>
+<h1 id="整体流程总览"><a href="#整体流程总览" class="headerlink" title="整体流程总览"></a>整体流程总览</h1><p>本文参考的是<a href="https://github.com/redis/redis/tree/2.6" target="_blank" rel="noopener">redis2.6 版本</a>的架构设计</p>
+<p>流程图：：<br><img src="/image/go-redis/architecture.png" alt="architecture"></p>
+<p>简单来说，redis 在启动时，会读取 config 文件，然后创建 redis server 和 aeloop 对象，并在 aeloop 中注册 AcceptHandler 这个 FileEvent，随后启动 aeloop，在 aeloop 中不断的循环处理 FileEvent 和 TimeEvent 事件。<br>AcceptHandler 事件为接受请求，当 redis server 接收到请求时，会创建 redis client 对象保存其句柄并注册 ReadQueryFromClient，然后在下一次循环中调用 ReadQueryFromClient。<br>ReadQueryFromClient 作用是解析 client 传递来的数据，并执行，将执行的结果存放至 redis client 对象中的 reply 属性中，并注册 SendReplyToClient 事件，然后在下一次循环中调用 SendReplyToClient 事件<br>SendReplyToClient 事件为向 client 发送 server 处理结果，在完毕后，会主动注销与此 client 有关的所有 FileEvent 事件，这样就完成了一个流程的调用。<br>当然，这仅仅只是其一套流程，其中数据储存的 redis object 的设计，aeloop 的实现，Dist 在单线程下的分段式 rehash 等等，都会在下面具体来讲一下。<br>阅读源码的时候，顺手用 go 编写了一个 mini 版的 redis，源码地址是：<a href="https://github.com/akitaSummer/akt-redis/tree/main/go，配合这个项目，应该能够更加快速的入门。" target="_blank" rel="noopener">https://github.com/akitaSummer/akt-redis/tree/main/go，配合这个项目，应该能够更加快速的入门。</a> #基础模块<br>在实现 redis server 这个对象之前，我们先需要把项目基础所需要的 redis obj，dict，List， net 和 aeloop 这几个基础组件实现，其中各自的用处我都会解释。</p>
+<h2 id="redis-object"><a href="#redis-object" class="headerlink" title="redis object"></a>redis object</h2><p>Redis obj 的作用是数据在内存中的最终存储形式，由于原来的项目是用 c 编写的，redis 使用了引用计数的形式，当其引用为 0 时，会进行析构释放内存，redis obj 的定义如下</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Gtype <span class="keyword">uint8</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Gval <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        <span class="comment">// string</span></span><br><span class="line">        GSTR Gtype = <span class="number">0x00</span></span><br><span class="line">        <span class="comment">// list</span></span><br><span class="line">        GLIST Gtype = <span class="number">0x01</span></span><br><span class="line">        <span class="comment">// set</span></span><br><span class="line">        GSET Gtype = <span class="number">0x02</span></span><br><span class="line">        <span class="comment">// zset</span></span><br><span class="line">        GZSET Gtype = <span class="number">0x03</span></span><br><span class="line">        <span class="comment">// dist</span></span><br><span class="line">        GDICT Gtype = <span class="number">0x04</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Gobj <span class="keyword">struct</span> &#123;</span><br><span class="line">        Type_    Gtype <span class="comment">// 数据类型</span></span><br><span class="line">        Val_     Gval <span class="comment">// 值</span></span><br><span class="line">        RefCount <span class="keyword">int</span> <span class="comment">// 计数</span></span><br><span class="line">&#125;</span><br><span class="line">创建析构等实现如下：</span><br><span class="line"><span class="keyword">package</span> obj</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"strconv"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Gtype <span class="keyword">uint8</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Gval <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        <span class="comment">// string</span></span><br><span class="line">        GSTR Gtype = <span class="number">0x00</span></span><br><span class="line">        <span class="comment">// list</span></span><br><span class="line">        GLIST Gtype = <span class="number">0x01</span></span><br><span class="line">        <span class="comment">// set</span></span><br><span class="line">        GSET Gtype = <span class="number">0x02</span></span><br><span class="line">        <span class="comment">// zset</span></span><br><span class="line">        GZSET Gtype = <span class="number">0x03</span></span><br><span class="line">        <span class="comment">// dist</span></span><br><span class="line">        GDICT Gtype = <span class="number">0x04</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Gobj <span class="keyword">struct</span> &#123;</span><br><span class="line">        Type_    Gtype</span><br><span class="line">        Val_     Gval</span><br><span class="line">        RefCount <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(obj *Gobj)</span> <span class="title">IntVal</span><span class="params">()</span> <span class="title">int64</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> obj.Type_ != GSTR &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">        &#125;</span><br><span class="line">        val, _ := strconv.ParseInt(obj.Val_.(<span class="keyword">string</span>), <span class="number">10</span>, <span class="number">64</span>)</span><br><span class="line">        <span class="keyword">return</span> val</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(o *Gobj)</span> <span class="title">StrVal</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> o.Type_ != GSTR &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="string">""</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> o.Val_.(<span class="keyword">string</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">CreateFromInt</span><span class="params">(val <span class="keyword">int64</span>)</span> *<span class="title">Gobj</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;Gobj&#123;</span><br><span class="line">                Type_:    GSTR,</span><br><span class="line">                Val_:     strconv.FormatInt(val, <span class="number">10</span>),</span><br><span class="line">                RefCount: <span class="number">1</span>,</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">CreateObject</span><span class="params">(typ Gtype, ptr <span class="keyword">interface</span>&#123;&#125;)</span> *<span class="title">Gobj</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;Gobj&#123;</span><br><span class="line">                Type_:    typ,</span><br><span class="line">                Val_:     ptr,</span><br><span class="line">                RefCount: <span class="number">1</span>,</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(o *Gobj)</span> <span class="title">IncrRefCount</span><span class="params">()</span></span> &#123;</span><br><span class="line">        o.RefCount++</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(o *Gobj)</span> <span class="title">DecrRefCount</span><span class="params">()</span></span> &#123;</span><br><span class="line">        o.RefCount--</span><br><span class="line">        <span class="keyword">if</span> o.RefCount == <span class="number">0</span> &#123;</span><br><span class="line">                <span class="comment">// 垃圾回收自动回收Val_</span></span><br><span class="line">                o.Val_ = <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="List"><a href="#List" class="headerlink" title="List"></a>List</h2><p>list 是一个双向链表，在 aeloop 中被用于存储 FileEvent 和 TimeEvent，每次 loop 的时候 aeloop 都会去遍历这两个 list，双向链表没什么难得，实现如下：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> list</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"akt-redis/obj"</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 双向链表</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Node <span class="keyword">struct</span> &#123;</span><br><span class="line">        Val  *obj.Gobj</span><br><span class="line">        next *Node</span><br><span class="line">        prev *Node</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ListType <span class="keyword">struct</span> &#123;</span><br><span class="line">        EqualFunc <span class="function"><span class="keyword">func</span><span class="params">(a, b *obj.Gobj)</span> <span class="title">bool</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> List <span class="keyword">struct</span> &#123;</span><br><span class="line">        ListType</span><br><span class="line">        Head   *Node</span><br><span class="line">        Tail   *Node</span><br><span class="line">        length <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">ListCreate</span><span class="params">(listType ListType)</span> *<span class="title">List</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;List&#123;</span><br><span class="line">                ListType: listType,</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">Append</span><span class="params">(val *obj.Gobj)</span></span> &#123;</span><br><span class="line">        node := Node&#123;</span><br><span class="line">                Val: val,</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> list.Head == <span class="literal">nil</span> &#123;</span><br><span class="line">                list.Head = &amp;node</span><br><span class="line">                list.Tail = &amp;node</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                node.prev = list.Tail</span><br><span class="line">                list.Tail.next = &amp;node</span><br><span class="line">                list.Tail = &amp;node</span><br><span class="line">        &#125;</span><br><span class="line">        list.length += <span class="number">1</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">DelNode</span><span class="params">(n *Node)</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> n == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> n == list.Head &#123;</span><br><span class="line">                <span class="keyword">if</span> n.next != <span class="literal">nil</span> &#123;</span><br><span class="line">                        n.next.prev = <span class="literal">nil</span></span><br><span class="line">                &#125;</span><br><span class="line">                list.Head = n.next</span><br><span class="line">                n.next = <span class="literal">nil</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> n == list.Tail &#123;</span><br><span class="line">                <span class="keyword">if</span> n.prev != <span class="literal">nil</span> &#123;</span><br><span class="line">                        n.prev.next = <span class="literal">nil</span></span><br><span class="line">                &#125;</span><br><span class="line">                list.Tail = n.prev</span><br><span class="line">                n.prev = <span class="literal">nil</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> n.prev != <span class="literal">nil</span> &#123;</span><br><span class="line">                        n.prev.next = n.next</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> n.next != <span class="literal">nil</span> &#123;</span><br><span class="line">                        n.next.prev = n.prev</span><br><span class="line">                &#125;</span><br><span class="line">                n.prev = <span class="literal">nil</span></span><br><span class="line">                n.next = <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        list.length -= <span class="number">1</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">Length</span><span class="params">()</span> <span class="title">int</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> list.length</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">First</span><span class="params">()</span> *<span class="title">Node</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> list.Head</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">Last</span><span class="params">()</span> *<span class="title">Node</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> list.Tail</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">Delete</span><span class="params">(val *obj.Gobj)</span></span> &#123;</span><br><span class="line">        list.DelNode(list.Find(val))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">Find</span><span class="params">(val *obj.Gobj)</span> *<span class="title">Node</span></span> &#123;</span><br><span class="line">        p := list.Head</span><br><span class="line">        <span class="keyword">for</span> p != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> list.EqualFunc(p.Val, val) &#123;</span><br><span class="line">                        <span class="keyword">return</span> p</span><br><span class="line">                &#125;</span><br><span class="line">                p = p.next</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(list *List)</span> <span class="title">LPush</span><span class="params">(val *obj.Gobj)</span></span> &#123;</span><br><span class="line">        node := Node&#123;</span><br><span class="line">                Val:  val,</span><br><span class="line">                next: list.Head,</span><br><span class="line">                prev: <span class="literal">nil</span>,</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> list.Head != <span class="literal">nil</span> &#123;</span><br><span class="line">                list.Head.prev = &amp;node</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                list.Tail = &amp;node</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        list.Head = &amp;node</span><br><span class="line">        list.length += <span class="number">1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Dict"><a href="#Dict" class="headerlink" title="Dict"></a>Dict</h2><p>dict 是用于 redis 底层 k-v 存储的字典</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Entry <span class="keyword">struct</span> &#123;</span><br><span class="line">        Key  *obj.Gobj</span><br><span class="line">        Val  *obj.Gobj</span><br><span class="line">        next *Entry</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> htable <span class="keyword">struct</span> &#123;</span><br><span class="line">        table []*Entry</span><br><span class="line">        size  <span class="keyword">int64</span></span><br><span class="line">        mask  <span class="keyword">int64</span></span><br><span class="line">        used  <span class="keyword">int64</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> DictType <span class="keyword">struct</span> &#123;</span><br><span class="line">        HashFunc  <span class="function"><span class="keyword">func</span><span class="params">(key *obj.Gobj)</span> <span class="title">int64</span></span></span><br><span class="line">        EqualFunc <span class="function"><span class="keyword">func</span><span class="params">(k1 *obj.Gobj, k2 *obj.Gobj)</span> <span class="title">bool</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Dict <span class="keyword">struct</span> &#123;</span><br><span class="line">        DictType</span><br><span class="line">        hts       [<span class="number">2</span>]*htable <span class="comment">// 存储的table</span></span><br><span class="line">        rehashidx <span class="keyword">int64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以发现，他的 hashtable 最大为两个，主要目的是 rehash，rehash 是指当存储空间不够时，进行扩容。而扩容不是一口气将老的所有值全部移动到新的 table 上，这样会引发 server 卡主，而是渐进式移动，即新的数据直接存储到新的 table 上，老的值分段，多次逐步移动到新 table 上。实现为：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">rehash</span><span class="params">(step <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">        <span class="comment">// 由于单线程，redis将rehash拆分成为小步骤进行rehash，以保证不会因为table过大而引发block线程</span></span><br><span class="line">        <span class="keyword">for</span> step &gt; <span class="number">0</span> &#123;</span><br><span class="line">                <span class="comment">// 已经rehash结束时</span></span><br><span class="line">                <span class="keyword">if</span> dict.hts[<span class="number">0</span>].used == <span class="number">0</span> &#123;</span><br><span class="line">                        dict.hts[<span class="number">0</span>] = dict.hts[<span class="number">1</span>]</span><br><span class="line">                        dict.hts[<span class="number">1</span>] = <span class="literal">nil</span></span><br><span class="line">                        dict.rehashidx = <span class="number">-1</span></span><br><span class="line">                        <span class="keyword">return</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// 寻找第一个非空值</span></span><br><span class="line">                <span class="keyword">for</span> dict.hts[<span class="number">0</span>].table[dict.rehashidx] == <span class="literal">nil</span> &#123;</span><br><span class="line">                        dict.rehashidx++</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 开始重新遍历非空值下hash，迁移至扩容后的table</span></span><br><span class="line">                entry := dict.hts[<span class="number">0</span>].table[dict.rehashidx]</span><br><span class="line">                <span class="keyword">for</span> entry != <span class="literal">nil</span> &#123;</span><br><span class="line">                        ne := entry.next</span><br><span class="line">                        idx := dict.HashFunc(entry.Key) &amp; dict.hts[<span class="number">1</span>].mask</span><br><span class="line">                        entry.next = dict.hts[<span class="number">1</span>].table[idx]</span><br><span class="line">                        dict.hts[<span class="number">1</span>].table[idx] = entry</span><br><span class="line">                        dict.hts[<span class="number">0</span>].used -= <span class="number">1</span></span><br><span class="line">                        dict.hts[<span class="number">1</span>].used += <span class="number">1</span></span><br><span class="line">                        entry = ne</span><br><span class="line">                &#125;</span><br><span class="line">                dict.hts[<span class="number">0</span>].table[dict.rehashidx] = <span class="literal">nil</span></span><br><span class="line">                dict.rehashidx += <span class="number">1</span></span><br><span class="line">                step -= <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>而在增删改查的时候，如果在 rehash，则会两个表均查询，dict 完整实现如下：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> dict</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"akt-redis/obj"</span></span><br><span class="line">        <span class="string">"errors"</span></span><br><span class="line">        <span class="string">"math"</span></span><br><span class="line">        <span class="string">"math/rand"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        INIT_SIZE    <span class="keyword">int64</span> = <span class="number">8</span></span><br><span class="line">        FORCE_RATIO  <span class="keyword">int64</span> = <span class="number">2</span> <span class="comment">// 强制扩容阈值</span></span><br><span class="line">        GROW_RATIO   <span class="keyword">int64</span> = <span class="number">2</span> <span class="comment">// 扩容幅度</span></span><br><span class="line">        DEFAULT_STEP <span class="keyword">int</span>   = <span class="number">1</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> (</span><br><span class="line">        EP_ERR = errors.New(<span class="string">"expand error"</span>)</span><br><span class="line">        EX_ERR = errors.New(<span class="string">"key exists error"</span>)</span><br><span class="line">        NK_ERR = errors.New(<span class="string">"key doesnt exist error"</span>)</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Entry <span class="keyword">struct</span> &#123;</span><br><span class="line">        Key  *obj.Gobj</span><br><span class="line">        Val  *obj.Gobj</span><br><span class="line">        next *Entry</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> htable <span class="keyword">struct</span> &#123;</span><br><span class="line">        table []*Entry</span><br><span class="line">        size  <span class="keyword">int64</span></span><br><span class="line">        mask  <span class="keyword">int64</span></span><br><span class="line">        used  <span class="keyword">int64</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> DictType <span class="keyword">struct</span> &#123;</span><br><span class="line">        HashFunc  <span class="function"><span class="keyword">func</span><span class="params">(key *obj.Gobj)</span> <span class="title">int64</span></span></span><br><span class="line">        EqualFunc <span class="function"><span class="keyword">func</span><span class="params">(k1 *obj.Gobj, k2 *obj.Gobj)</span> <span class="title">bool</span></span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Dict <span class="keyword">struct</span> &#123;</span><br><span class="line">        DictType</span><br><span class="line">        hts       [<span class="number">2</span>]*htable</span><br><span class="line">        rehashidx <span class="keyword">int64</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">DictCreate</span><span class="params">(distType DictType)</span> *<span class="title">Dict</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;Dict&#123;</span><br><span class="line">                DictType:  distType,</span><br><span class="line">                rehashidx: <span class="number">-1</span>,</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">nextPower</span><span class="params">(size <span class="keyword">int64</span>)</span> <span class="title">int64</span></span> &#123;</span><br><span class="line">        num := INIT_SIZE</span><br><span class="line">        <span class="keyword">for</span> num &lt; math.MaxInt64 &#123;</span><br><span class="line">                <span class="keyword">if</span> num &gt;= size &#123;</span><br><span class="line">                        <span class="keyword">return</span> num</span><br><span class="line">                &#125;</span><br><span class="line">                num *= <span class="number">2</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">expand</span><span class="params">(size <span class="keyword">int64</span>)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        <span class="comment">// 找寻大于等于size的最近2**n</span></span><br><span class="line">        num := nextPower(size)</span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() || (dict.hts[<span class="number">0</span>] != <span class="literal">nil</span> &amp;&amp; dict.hts[<span class="number">0</span>].size &gt;= num) &#123;</span><br><span class="line">                <span class="keyword">return</span> EP_ERR</span><br><span class="line">        &#125;</span><br><span class="line">        ht := htable&#123;</span><br><span class="line">                size:  num,</span><br><span class="line">                mask:  num - <span class="number">1</span>,</span><br><span class="line">                table: <span class="built_in">make</span>([]*Entry, num),</span><br><span class="line">                used:  <span class="number">0</span>,</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 初始化时</span></span><br><span class="line">        <span class="keyword">if</span> dict.hts[<span class="number">0</span>] == <span class="literal">nil</span> &#123;</span><br><span class="line">                dict.hts[<span class="number">0</span>] = &amp;ht</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// rehash</span></span><br><span class="line">        dict.hts[<span class="number">1</span>] = &amp;ht</span><br><span class="line">        dict.rehashidx = <span class="number">0</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">isRehashing</span><span class="params">()</span> <span class="title">bool</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> dict.rehashidx != <span class="number">-1</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">expandIfNeeded</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        <span class="comment">// rehash 中</span></span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 刚初始化完毕</span></span><br><span class="line">        <span class="keyword">if</span> dict.hts[<span class="number">0</span>] == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> dict.expand(INIT_SIZE) <span class="comment">// redis 源码INIT_SIZE为4</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 当前数目/大小 &gt; 强制扩容阈值，进行扩容</span></span><br><span class="line">        hashTable := dict.hts[<span class="number">0</span>]</span><br><span class="line">        <span class="keyword">if</span> (hashTable.used &gt; hashTable.size) &amp;&amp; (hashTable.used/hashTable.size &gt; FORCE_RATIO) &#123;</span><br><span class="line">                <span class="keyword">return</span> dict.expand(hashTable.size * GROW_RATIO)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">rehashStep</span><span class="params">()</span></span> &#123;</span><br><span class="line">        dict.rehash(DEFAULT_STEP)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">rehash</span><span class="params">(step <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">        <span class="comment">// 由于单线程，redis将rehash拆分成为小步骤进行rehash，以保证不会因为table过大而引发block线程</span></span><br><span class="line">        <span class="keyword">for</span> step &gt; <span class="number">0</span> &#123;</span><br><span class="line">                <span class="comment">// 已经rehash结束时</span></span><br><span class="line">                <span class="keyword">if</span> dict.hts[<span class="number">0</span>].used == <span class="number">0</span> &#123;</span><br><span class="line">                        dict.hts[<span class="number">0</span>] = dict.hts[<span class="number">1</span>]</span><br><span class="line">                        dict.hts[<span class="number">1</span>] = <span class="literal">nil</span></span><br><span class="line">                        dict.rehashidx = <span class="number">-1</span></span><br><span class="line">                        <span class="keyword">return</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// 寻找第一个非空值</span></span><br><span class="line">                <span class="keyword">for</span> dict.hts[<span class="number">0</span>].table[dict.rehashidx] == <span class="literal">nil</span> &#123;</span><br><span class="line">                        dict.rehashidx++</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 开始重新遍历非空值下hash，迁移至扩容后的table</span></span><br><span class="line">                entry := dict.hts[<span class="number">0</span>].table[dict.rehashidx]</span><br><span class="line">                <span class="keyword">for</span> entry != <span class="literal">nil</span> &#123;</span><br><span class="line">                        ne := entry.next</span><br><span class="line">                        idx := dict.HashFunc(entry.Key) &amp; dict.hts[<span class="number">1</span>].mask</span><br><span class="line">                        entry.next = dict.hts[<span class="number">1</span>].table[idx]</span><br><span class="line">                        dict.hts[<span class="number">1</span>].table[idx] = entry</span><br><span class="line">                        dict.hts[<span class="number">0</span>].used -= <span class="number">1</span></span><br><span class="line">                        dict.hts[<span class="number">1</span>].used += <span class="number">1</span></span><br><span class="line">                        entry = ne</span><br><span class="line">                &#125;</span><br><span class="line">                dict.hts[<span class="number">0</span>].table[dict.rehashidx] = <span class="literal">nil</span></span><br><span class="line">                dict.rehashidx += <span class="number">1</span></span><br><span class="line">                step -= <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">freeEntry</span><span class="params">(e *Entry)</span></span> &#123;</span><br><span class="line">        e.Key.DecrRefCount()</span><br><span class="line">        e.Val.DecrRefCount()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">Delete</span><span class="params">(key *obj.Gobj)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> dict.hts[<span class="number">0</span>] == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> NK_ERR</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() &#123;</span><br><span class="line">                dict.rehashStep()</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        h := dict.HashFunc(key)</span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt;= <span class="number">1</span>; i++ &#123;</span><br><span class="line">                idx := h &amp; dict.hts[i].mask</span><br><span class="line">                e := dict.hts[i].table[idx]</span><br><span class="line">                <span class="keyword">var</span> prev *Entry</span><br><span class="line">                <span class="keyword">for</span> e != <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">if</span> dict.EqualFunc(e.Key, key) &#123;</span><br><span class="line">                                <span class="keyword">if</span> prev == <span class="literal">nil</span> &#123;</span><br><span class="line">                                        dict.hts[i].table[idx] = e.next</span><br><span class="line">                                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                        prev.next = e.next</span><br><span class="line">                                &#125;</span><br><span class="line">                                freeEntry(e)</span><br><span class="line">                                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">                        &#125;</span><br><span class="line">                        prev = e</span><br><span class="line">                        e = e.next</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> !dict.isRehashing() &#123;</span><br><span class="line">                        <span class="keyword">break</span></span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> NK_ERR</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">RandomGet</span><span class="params">()</span> *<span class="title">Entry</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> dict.hts[<span class="number">0</span>] == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        t := <span class="number">0</span></span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() &#123;</span><br><span class="line">                dict.rehashStep()</span><br><span class="line">                <span class="keyword">if</span> dict.hts[<span class="number">1</span>] != <span class="literal">nil</span> &amp;&amp; dict.hts[<span class="number">1</span>].used &gt; dict.hts[<span class="number">0</span>].used &#123;</span><br><span class="line">                        t = <span class="number">1</span></span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        idx := rand.Int63n(dict.hts[t].size)</span><br><span class="line">        cnt := <span class="number">0</span></span><br><span class="line">        <span class="keyword">for</span> dict.hts[t].table[idx] == <span class="literal">nil</span> &amp;&amp; cnt &lt; <span class="number">1000</span> &#123;</span><br><span class="line">                idx = rand.Int63n(dict.hts[t].size)</span><br><span class="line">                cnt += <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> dict.hts[t].table[idx] == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">var</span> listLen <span class="keyword">int64</span></span><br><span class="line">        p := dict.hts[t].table[idx]</span><br><span class="line">        <span class="keyword">for</span> p != <span class="literal">nil</span> &#123;</span><br><span class="line">                listLen += <span class="number">1</span></span><br><span class="line">                p = p.next</span><br><span class="line">        &#125;</span><br><span class="line">        listIdx := rand.Int63n(listLen)</span><br><span class="line">        p = dict.hts[t].table[idx]</span><br><span class="line">        <span class="keyword">for</span> i := <span class="keyword">int64</span>(<span class="number">0</span>); i &lt; listIdx; i++ &#123;</span><br><span class="line">                p = p.next</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> p</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">keyIndex</span><span class="params">(key *obj.Gobj)</span> <span class="title">int64</span></span> &#123;</span><br><span class="line">        err := dict.expandIfNeeded()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line">        &#125;</span><br><span class="line">        h := dict.HashFunc(key)</span><br><span class="line">        <span class="keyword">var</span> idx <span class="keyword">int64</span></span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt;= <span class="number">1</span>; i++ &#123;</span><br><span class="line">                idx = h &amp; dict.hts[i].mask</span><br><span class="line">                e := dict.hts[i].table[idx]</span><br><span class="line">                <span class="keyword">for</span> e != <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">if</span> dict.EqualFunc(e.Key, key) &#123;</span><br><span class="line">                                <span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line">                        &#125;</span><br><span class="line">                        e = e.next</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> !dict.isRehashing() &#123;</span><br><span class="line">                        <span class="keyword">break</span></span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> idx</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">AddRaw</span><span class="params">(key *obj.Gobj)</span> *<span class="title">Entry</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() &#123;</span><br><span class="line">                dict.rehashStep()</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 获取index</span></span><br><span class="line">        idx := dict.keyIndex(key)</span><br><span class="line">        <span class="keyword">if</span> idx == <span class="number">-1</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">var</span> ht *htable</span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() &#123;</span><br><span class="line">                ht = dict.hts[<span class="number">1</span>]</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                ht = dict.hts[<span class="number">0</span>]</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">var</span> e Entry</span><br><span class="line">        e.Key = key</span><br><span class="line">        key.IncrRefCount()</span><br><span class="line">        e.next = ht.table[idx]</span><br><span class="line">        ht.table[idx] = &amp;e</span><br><span class="line">        ht.used += <span class="number">1</span></span><br><span class="line">        <span class="keyword">return</span> &amp;e</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">Add</span><span class="params">(key *obj.Gobj, val *obj.Gobj)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        entry := dict.AddRaw(key)</span><br><span class="line">        <span class="keyword">if</span> entry == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> EX_ERR</span><br><span class="line">        &#125;</span><br><span class="line">        entry.Val = val</span><br><span class="line">        val.IncrRefCount()</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">Set</span><span class="params">(key *obj.Gobj, val *obj.Gobj)</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> err := dict.Add(key, val); err == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        entry := dict.Find(key)</span><br><span class="line">        entry.Val.DecrRefCount()</span><br><span class="line">        entry.Val = val</span><br><span class="line">        val.IncrRefCount()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">Find</span><span class="params">(key *obj.Gobj)</span> *<span class="title">Entry</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> dict.hts[<span class="number">0</span>] == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> dict.isRehashing() &#123;</span><br><span class="line">                dict.rehashStep()</span><br><span class="line">        &#125;</span><br><span class="line">        h := dict.HashFunc(key)</span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt;= <span class="number">1</span>; i++ &#123;</span><br><span class="line">                idx := h &amp; dict.hts[i].mask</span><br><span class="line">                e := dict.hts[i].table[idx]</span><br><span class="line">                <span class="keyword">for</span> e != <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">if</span> dict.EqualFunc(e.Key, key) &#123;</span><br><span class="line">                                <span class="keyword">return</span> e</span><br><span class="line">                        &#125;</span><br><span class="line">                        e = e.next</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> !dict.isRehashing() &#123;</span><br><span class="line">                        <span class="keyword">break</span></span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(dict *Dict)</span> <span class="title">Get</span><span class="params">(key *obj.Gobj)</span> *<span class="title">obj</span>.<span class="title">Gobj</span></span> &#123;</span><br><span class="line">        entry := dict.Find(key)</span><br><span class="line">        <span class="keyword">if</span> entry == <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> entry.Val</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Net"><a href="#Net" class="headerlink" title="Net"></a>Net</h2><p>net 模块主要是用于监听端口，每轮循环会查询是否有 client 接入，如果有则将其句柄返回，另外还有往句柄中读写相关 buffer</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> net</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">        <span class="string">"log"</span></span><br><span class="line"></span><br><span class="line">        <span class="string">"golang.org/x/sys/unix"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> BACKLOG <span class="keyword">int</span> = <span class="number">64</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Accept</span><span class="params">(fd <span class="keyword">int</span>)</span> <span class="params">(<span class="keyword">int</span>, error)</span></span> &#123;</span><br><span class="line">        nfd, _, err := unix.Accept(fd)</span><br><span class="line">        <span class="keyword">return</span> nfd, err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Close</span><span class="params">(fd <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">        unix.Close(fd)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Connect</span><span class="params">(host [4]<span class="keyword">byte</span>, port <span class="keyword">int</span>)</span> <span class="params">(<span class="keyword">int</span>, error)</span></span> &#123;</span><br><span class="line">        <span class="comment">// 创建socket</span></span><br><span class="line">        s, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"init socket err: %v\n"</span>, err)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 地址绑定</span></span><br><span class="line">        <span class="keyword">var</span> addr unix.SockaddrInet4</span><br><span class="line">        addr.Addr = host</span><br><span class="line">        addr.Port = port</span><br><span class="line">        <span class="comment">// 链接</span></span><br><span class="line">        err = unix.Connect(s, &amp;addr)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"connect err: %v\n"</span>, err)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TcpServer</span><span class="params">(port <span class="keyword">int</span>)</span> <span class="params">(<span class="keyword">int</span>, error)</span></span> &#123;</span><br><span class="line">        <span class="comment">// 创建socket</span></span><br><span class="line">        s, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"init socket err: %v\n"</span>, err)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>, <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 设置正在使用及端口复用</span></span><br><span class="line">        err = unix.SetsockoptInt(s, unix.SOL_SOCKET, unix.SO_REUSEPORT, port)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"set SO_REUSEPORT err: %v\n"</span>, err)</span><br><span class="line">                unix.Close(s)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>, <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 地址绑定</span></span><br><span class="line">        <span class="keyword">var</span> addr unix.SockaddrInet4</span><br><span class="line">        addr.Port = port</span><br><span class="line">        err = unix.Bind(s, &amp;addr)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"bind addr err: %v\n"</span>, err)</span><br><span class="line">                unix.Close(s)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>, <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        err = unix.Listen(s, BACKLOG)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"listen socket err: %v\n"</span>, err)</span><br><span class="line">                unix.Close(s)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>, <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Read</span><span class="params">(fd <span class="keyword">int</span>, buf []<span class="keyword">byte</span>)</span> <span class="params">(<span class="keyword">int</span>, error)</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> unix.Read(fd, buf)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Write</span><span class="params">(fd <span class="keyword">int</span>, buf []<span class="keyword">byte</span>)</span> <span class="params">(<span class="keyword">int</span>, error)</span></span> &#123;</span><br><span class="line">        <span class="keyword">return</span> unix.Write(fd, buf)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="AeLoop"><a href="#AeLoop" class="headerlink" title="AeLoop"></a>AeLoop</h2><p>AeLoop 是 redis 运行时的主要处理对象，通过创建 Epoll 后，遍历 FileEvents 和 TimeEvents 两个 list，找寻需要执行的 event，执行他们。数据结构如下：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FeType <span class="keyword">int</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        AE_READABLE FeType = <span class="number">1</span></span><br><span class="line">        AE_WRITABLE FeType = <span class="number">2</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> TeType <span class="keyword">int</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">        AE_NORMAL TeType = <span class="number">1</span></span><br><span class="line">        AE_ONCE   TeType = <span class="number">2</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FileCallback <span class="function"><span class="keyword">func</span><span class="params">(loop *AeLoop, fd <span class="keyword">int</span>, extra <span class="keyword">interface</span>&#123;&#125;)</span></span></span><br><span class="line"><span class="keyword">type</span> TimeCallback <span class="function"><span class="keyword">func</span><span class="params">(loop *AeLoop, fd <span class="keyword">int</span>, extra <span class="keyword">interface</span>&#123;&#125;)</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> fe2ep = [<span class="number">3</span>]<span class="keyword">uint32</span>&#123;<span class="number">0</span>, unix.EPOLLIN, unix.EPOLLOUT&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> AeFileEvent <span class="keyword">struct</span> &#123;</span><br><span class="line">        fd    <span class="keyword">int</span></span><br><span class="line">        mask  FeType</span><br><span class="line">        cb    FileCallback</span><br><span class="line">        extra <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> AeTimeEvent <span class="keyword">struct</span> &#123;</span><br><span class="line">        id       <span class="keyword">int</span></span><br><span class="line">        mask     TeType</span><br><span class="line">        when     <span class="keyword">int64</span> <span class="comment">//ms</span></span><br><span class="line">        interval <span class="keyword">int64</span> <span class="comment">// 频率</span></span><br><span class="line">        cb       TimeCallback</span><br><span class="line">        extra    <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">        next     *AeTimeEvent</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> AeLoop <span class="keyword">struct</span> &#123;</span><br><span class="line">        FileEvents      <span class="keyword">map</span>[<span class="keyword">int</span>]*AeFileEvent</span><br><span class="line">        TimeEvents      *AeTimeEvent</span><br><span class="line">        fileEventFd     <span class="keyword">int</span></span><br><span class="line">        timeEventNextId <span class="keyword">int</span></span><br><span class="line">        stop            <span class="keyword">bool</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>创建及处理逻辑如下：</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 返回fileEvent的key，可读为正，可写为负</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">getFeKey</span><span class="params">(fd <span class="keyword">int</span>, mask FeType)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> mask == AE_READABLE &#123;</span><br><span class="line">                <span class="keyword">return</span> fd</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> fd * <span class="number">-1</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">AeLoopCreate</span><span class="params">()</span> <span class="params">(*AeLoop, error)</span></span> &#123;</span><br><span class="line">        <span class="comment">// mac 未暴露</span></span><br><span class="line">        epollFd, err := unix.EpollCreate1(<span class="number">0</span>)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">nil</span>, err</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> &amp;AeLoop&#123;</span><br><span class="line">                FileEvents:      <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">int</span>]*AeFileEvent),</span><br><span class="line">                fileEventFd:     epollFd,</span><br><span class="line">                timeEventNextId: <span class="number">1</span>,</span><br><span class="line">                stop:            <span class="literal">false</span>,</span><br><span class="line">        &#125;, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 主循环</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">AeMain</span><span class="params">()</span></span> &#123;</span><br><span class="line">        <span class="keyword">for</span> !loop.stop &#123;</span><br><span class="line">                tes, fes := loop.AeWait()</span><br><span class="line">                loop.AeProcess(tes, fes)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取最近的时间</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">nearestTime</span><span class="params">()</span> <span class="title">int64</span></span> &#123;</span><br><span class="line">        <span class="keyword">var</span> nearest <span class="keyword">int64</span> = utils.GetMsTime() + <span class="number">1000</span></span><br><span class="line">        p := loop.TimeEvents</span><br><span class="line">        <span class="keyword">for</span> p != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> p.when &lt; nearest &#123;</span><br><span class="line">                        nearest = p.when</span><br><span class="line">                &#125;</span><br><span class="line">                p = p.next</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> nearest</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 等待事件</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">AeWait</span><span class="params">()</span> <span class="params">(tes []*AeTimeEvent, fes []*AeFileEvent)</span></span> &#123;</span><br><span class="line">        <span class="comment">// 获取超时时间</span></span><br><span class="line">        timeout := loop.nearestTime() - utils.GetMsTime()</span><br><span class="line">        <span class="keyword">if</span> timeout &lt;= <span class="number">0</span> &#123;</span><br><span class="line">                timeout = <span class="number">10</span> <span class="comment">// at least wait 10ms</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">var</span> events [<span class="number">128</span>]unix.EpollEvent</span><br><span class="line">        <span class="comment">// 获取两次timeout之间的所有fe事件</span></span><br><span class="line">        n, err := unix.EpollWait(loop.fileEventFd, events[:], <span class="keyword">int</span>(timeout))</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"epoll wait warnning: %v\n"</span>, err)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> n &gt; <span class="number">0</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"ae get %v epoll events\n"</span>, n)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 查询对应事件，并存储到fes中</span></span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; n; i++ &#123;</span><br><span class="line">                <span class="keyword">if</span> events[i].Events&amp;unix.EPOLLIN != <span class="number">0</span> &#123;</span><br><span class="line">                        fe := loop.FileEvents[getFeKey(<span class="keyword">int</span>(events[i].Fd), AE_READABLE)]</span><br><span class="line">                        <span class="keyword">if</span> fe != <span class="literal">nil</span> &#123;</span><br><span class="line">                                fes = <span class="built_in">append</span>(fes, fe)</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> events[i].Events&amp;unix.EPOLLOUT != <span class="number">0</span> &#123;</span><br><span class="line">                        fe := loop.FileEvents[getFeKey(<span class="keyword">int</span>(events[i].Fd), AE_WRITABLE)]</span><br><span class="line">                        <span class="keyword">if</span> fe != <span class="literal">nil</span> &#123;</span><br><span class="line">                                fes = <span class="built_in">append</span>(fes, fe)</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 查询需要执行的事件</span></span><br><span class="line">        now := utils.GetMsTime()</span><br><span class="line">        p := loop.TimeEvents</span><br><span class="line">        <span class="keyword">for</span> p != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> p.when &lt;= now &#123;</span><br><span class="line">                        tes = <span class="built_in">append</span>(tes, p)</span><br><span class="line">                &#125;</span><br><span class="line">                p = p.next</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span>, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 处理事件</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">AeProcess</span><span class="params">(tes []*AeTimeEvent, fes []*AeFileEvent)</span></span> &#123;</span><br><span class="line">        <span class="keyword">for</span> _, te := <span class="keyword">range</span> tes &#123;</span><br><span class="line">                te.cb(loop, te.id, te.extra)</span><br><span class="line">                <span class="keyword">if</span> te.mask == AE_ONCE &#123;</span><br><span class="line">                        loop.RemoveTimeEvent(te.id)</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        te.when = utils.GetMsTime() + te.interval</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> _, fe := <span class="keyword">range</span> fes &#123;</span><br><span class="line">                fe.cb(loop, fe.fd, fe.extra)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">getEpollMask</span><span class="params">(fd <span class="keyword">int</span>)</span> <span class="params">(ev <span class="keyword">uint32</span>)</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> loop.FileEvents[getFeKey(fd, AE_READABLE)] != <span class="literal">nil</span> &#123;</span><br><span class="line">                ev |= fe2ep[AE_READABLE]</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> loop.FileEvents[getFeKey(fd, AE_WRITABLE)] != <span class="literal">nil</span> &#123;</span><br><span class="line">                ev |= fe2ep[AE_WRITABLE]</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>添加事件和移除事件时，均会更新 epoll 的句柄</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">AddFileEvent</span><span class="params">(fd <span class="keyword">int</span>, mask FeType, callback FileCallback, extra <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        <span class="comment">// 查询当前fd是否存在可读或可写事件</span></span><br><span class="line">        ev := loop.getEpollMask(fd)</span><br><span class="line">        <span class="comment">// ev != 0 &amp;&amp; fe2ep[mask] != 0</span></span><br><span class="line">        <span class="keyword">if</span> ev&amp;fe2ep[mask] != <span class="number">0</span> &#123;</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        op := unix.EPOLL_CTL_ADD</span><br><span class="line">        <span class="comment">// 没有可读或可写事件</span></span><br><span class="line">        <span class="keyword">if</span> ev != <span class="number">0</span> &#123;</span><br><span class="line">                op = unix.EPOLL_CTL_MOD</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        ev |= fe2ep[mask]</span><br><span class="line">        err := unix.EpollCtl(loop.fileEventFd, op, fd, &amp;unix.EpollEvent&#123;Fd: <span class="keyword">int32</span>(fd), Events: ev&#125;)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"epoll ctr err: %v\n"</span>, err)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        loop.FileEvents[getFeKey(fd, mask)] = &amp;AeFileEvent&#123;</span><br><span class="line">                fd:    fd,</span><br><span class="line">                mask:  mask,</span><br><span class="line">                cb:    callback,</span><br><span class="line">                extra: extra,</span><br><span class="line">        &#125;</span><br><span class="line">        log.Printf(<span class="string">"ae add file event fd:%v, mask:%v\n"</span>, fd, mask)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">RemoveFileEvent</span><span class="params">(fd <span class="keyword">int</span>, mask FeType)</span></span> &#123;</span><br><span class="line">        op := unix.EPOLL_CTL_DEL</span><br><span class="line">        ev := loop.getEpollMask(fd)</span><br><span class="line">        ev &amp;= ^fe2ep[mask]</span><br><span class="line">        <span class="keyword">if</span> ev != <span class="number">0</span> &#123;</span><br><span class="line">                op = unix.EPOLL_CTL_MOD</span><br><span class="line">        &#125;</span><br><span class="line">        err := unix.EpollCtl(loop.fileEventFd, op, fd, &amp;unix.EpollEvent&#123;Fd: <span class="keyword">int32</span>(fd), Events: ev&#125;)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"epoll del err: %v\n"</span>, err)</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        loop.FileEvents[getFeKey(fd, mask)] = <span class="literal">nil</span></span><br><span class="line">        log.Printf(<span class="string">"ae remove file event fd:%v, mask:%v\n"</span>, fd, mask)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">AddTimeEvent</span><span class="params">(mask TeType, interval <span class="keyword">int64</span>, callback TimeCallback, extra <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">        id := loop.timeEventNextId</span><br><span class="line">        loop.timeEventNextId++</span><br><span class="line">        loop.TimeEvents = &amp;AeTimeEvent&#123;</span><br><span class="line">                id:       id,</span><br><span class="line">                mask:     mask,</span><br><span class="line">                interval: interval,</span><br><span class="line">                when:     utils.GetMsTime() + interval,</span><br><span class="line">                cb:       callback,</span><br><span class="line">                extra:    extra,</span><br><span class="line">                next:     loop.TimeEvents,</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> id</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(loop *AeLoop)</span> <span class="title">RemoveTimeEvent</span><span class="params">(id <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">        p := loop.TimeEvents</span><br><span class="line">        <span class="keyword">var</span> pre *AeTimeEvent</span><br><span class="line">        <span class="keyword">for</span> p != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> p.id == id &#123;</span><br><span class="line">                        <span class="keyword">if</span> pre == <span class="literal">nil</span> &#123;</span><br><span class="line">                                loop.TimeEvents = p.next</span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                pre.next = p.next</span><br><span class="line">                                p.next = <span class="literal">nil</span></span><br><span class="line">                        &#125;</span><br><span class="line">                        <span class="keyword">break</span></span><br><span class="line">                &#125;</span><br><span class="line">                pre = p</span><br><span class="line">                p = p.next</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="顶层实现"><a href="#顶层实现" class="headerlink" title="顶层实现"></a>顶层实现</h1><p>在基础模块处理好后，我们就可以完成顶层的 redis server 和 redis client 的实现了</p>
+<h2 id="redis-server"><a href="#redis-server" class="headerlink" title="redis server"></a>redis server</h2><p>Redis server 比较简单，内部主要是实现了储存的 db，client 的列表和 aeloop，在 redis 运行起来时，就是创建 redis server，运行 server 里的 aeloop，将 AcceptHandler 放置于 FileEventList 中，调用 AcceptHandler 时创建 redis client</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> GodisDB <span class="keyword">struct</span> &#123;</span><br><span class="line">        data   *dict.Dict</span><br><span class="line">        expire *dict.Dict</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> GodisServer <span class="keyword">struct</span> &#123;</span><br><span class="line">        fd      <span class="keyword">int</span></span><br><span class="line">        port    <span class="keyword">int</span></span><br><span class="line">        db      *GodisDB</span><br><span class="line">        clients <span class="keyword">map</span>[<span class="keyword">int</span>]*GodisClient</span><br><span class="line">        aeLoop  *ae.AeLoop</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 接受client</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">AcceptHandler</span><span class="params">(loop *ae.AeLoop, fd <span class="keyword">int</span>, extra <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        cfd, err := net.Accept(fd)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"accept err: %v\n"</span>, err)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        client := CreateClient(cfd)</span><br><span class="line">        <span class="comment">//<span class="doctag">TODO:</span> check max clients limit</span></span><br><span class="line">        server.clients[cfd] = client</span><br><span class="line">        server.aeLoop.AddFileEvent(cfd, ae.AE_READABLE, ReadQueryFromClient, client)</span><br><span class="line">        log.Printf(<span class="string">"accept client, fd: %v\n"</span>, cfd)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> EXPIRE_CHECK_COUNT <span class="keyword">int</span> = <span class="number">100</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 随机取数据判断是否过期</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">ServerCron</span><span class="params">(loop *ae.AeLoop, id <span class="keyword">int</span>, extra <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; EXPIRE_CHECK_COUNT; i++ &#123;</span><br><span class="line">                entry := server.db.expire.RandomGet()</span><br><span class="line">                <span class="keyword">if</span> entry == <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">break</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> entry.Val.IntVal() &lt; time.Now().Unix() &#123;</span><br><span class="line">                        server.db.data.Delete(entry.Key)</span><br><span class="line">                        server.db.expire.Delete(entry.Key)</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 初始化godis server</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">initServer</span><span class="params">(config *conf.Config)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        server.port = config.Port</span><br><span class="line">        server.clients = <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">int</span>]*GodisClient)</span><br><span class="line">        server.db = &amp;GodisDB&#123;</span><br><span class="line">                data:   dict.DictCreate(dict.DictType&#123;HashFunc: utils.GStrHash, EqualFunc: utils.GStrEqual&#125;),</span><br><span class="line">                expire: dict.DictCreate(dict.DictType&#123;HashFunc: utils.GStrHash, EqualFunc: utils.GStrEqual&#125;),</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">var</span> err error</span><br><span class="line">        <span class="keyword">if</span> server.aeLoop, err = ae.AeLoopCreate(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line">        server.fd, err = net.TcpServer(server.port)</span><br><span class="line">        <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">        path := os.Args[<span class="number">1</span>]</span><br><span class="line">        config, err := conf.LoadConfig(path)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"config error: %v\n"</span>, err)</span><br><span class="line">        &#125;</span><br><span class="line">        err = initServer(config)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                log.Printf(<span class="string">"init server error: %v\n"</span>, err)</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        server.aeLoop.AddFileEvent(server.fd, ae.AE_READABLE, AcceptHandler, <span class="literal">nil</span>)</span><br><span class="line">        server.aeLoop.AddTimeEvent(ae.AE_NORMAL, <span class="number">100</span>, ServerCron, <span class="literal">nil</span>)</span><br><span class="line">        log.Println(<span class="string">"godis server is up."</span>)</span><br><span class="line">        server.aeLoop.AeMain()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="redis-client"><a href="#redis-client" class="headerlink" title="redis client"></a>redis client</h2><p>redis 就相对复杂一些，首先先要解析命令，判断是 InLine 还是 MuttiBulk 命令，协议为：<a href="https://xargin.com/redis-protocal/" target="_blank" rel="noopener">https://xargin.com/redis-protocal/</a></p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> GodisClient <span class="keyword">struct</span> &#123;</span><br><span class="line">        fd       <span class="keyword">int</span></span><br><span class="line">        db       *GodisDB</span><br><span class="line">        args     []*obj.Gobj</span><br><span class="line">        reply    *list.List</span><br><span class="line">        queryBuf []<span class="keyword">byte</span></span><br><span class="line">        queryLen <span class="keyword">int</span> <span class="comment">// client.queryLen: 未处理的长度</span></span><br><span class="line">        cmdType  utils.CmdType</span><br><span class="line">        bulkNum  <span class="keyword">int</span></span><br><span class="line">        bulkLen  <span class="keyword">int</span></span><br><span class="line">        sentLen  <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 通过首字符和结尾 "\r\n" 区分每一条命令</span></span><br><span class="line"><span class="comment">// +: 简单string</span></span><br><span class="line"><span class="comment">// -: error 如错误返回</span></span><br><span class="line"><span class="comment">// :: int 如自增命令后的返回</span></span><br><span class="line"><span class="comment">// $: string，"$4\r\ntest\r\n"后接数字，告诉string长度，\r\n后为string文本，可以包含换行符之类的字符</span></span><br><span class="line"><span class="comment">// *: array 后接数字，表示数组长度</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// redis 命令</span></span><br><span class="line"><span class="comment">// InLine: "set key val\r\n"</span></span><br><span class="line"><span class="comment">// MuttiBulk: "*3\r\n$3\r\nset\r\n$3\r\nkey\r\n$3\r\nval\r\n"</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 处理client query</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">ProcessQueryBuf</span><span class="params">(client *GodisClient)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">        <span class="comment">// 不断取值</span></span><br><span class="line">        <span class="keyword">for</span> <span class="built_in">len</span>(client.queryBuf) &gt; <span class="number">0</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> client.cmdType == utils.COMMAND_UNKNOWN &#123;</span><br><span class="line">                        <span class="keyword">if</span> client.queryBuf[<span class="number">0</span>] == <span class="string">'*'</span> &#123;</span><br><span class="line">                                client.cmdType = utils.COMMAND_BULK</span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                client.cmdType = utils.COMMAND_INLINE</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 读取内容转化为cmd args</span></span><br><span class="line">                <span class="keyword">var</span> ok <span class="keyword">bool</span></span><br><span class="line">                <span class="keyword">var</span> err error</span><br><span class="line">                <span class="keyword">if</span> client.cmdType == utils.COMMAND_INLINE &#123;</span><br><span class="line">                        ok, err = handleInlineBuf(client)</span><br><span class="line">                &#125; <span class="keyword">else</span> <span class="keyword">if</span> client.cmdType == utils.COMMAND_BULK &#123;</span><br><span class="line">                        ok, err = handleBulkBuf(client)</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> errors.New(<span class="string">"unknow Godis Command Type"</span>)</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> err</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 执行cmd</span></span><br><span class="line">                <span class="keyword">if</span> ok &#123;</span><br><span class="line">                        <span class="keyword">if</span> <span class="built_in">len</span>(client.args) == <span class="number">0</span> &#123;</span><br><span class="line">                                resetClient(client)</span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                ProcessCommand(client)</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="comment">// 未读取完，下次再处理</span></span><br><span class="line">                        <span class="keyword">break</span></span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleInlineBuf</span><span class="params">(client *GodisClient)</span> <span class="params">(<span class="keyword">bool</span>, error)</span></span> &#123;</span><br><span class="line">        index, err := client.findLineInQuery()</span><br><span class="line">        <span class="keyword">if</span> index &lt; <span class="number">0</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">false</span>, err</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        subs := strings.Split(<span class="keyword">string</span>(client.queryBuf[:index]), <span class="string">" "</span>)</span><br><span class="line">        client.queryBuf = client.queryBuf[index+<span class="number">2</span>:]</span><br><span class="line">        client.queryLen -= index + <span class="number">2</span></span><br><span class="line">        client.args = <span class="built_in">make</span>([]*obj.Gobj, <span class="built_in">len</span>(subs))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> i, v := <span class="keyword">range</span> subs &#123;</span><br><span class="line">                client.args[i] = obj.CreateObject(obj.GSTR, v)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleBulkBuf</span><span class="params">(client *GodisClient)</span> <span class="params">(<span class="keyword">bool</span>, error)</span></span> &#123;</span><br><span class="line">        <span class="comment">// init bulkNum</span></span><br><span class="line">        <span class="keyword">if</span> client.bulkNum == <span class="number">0</span> &#123;</span><br><span class="line">                index, err := client.findLineInQuery()</span><br><span class="line">                <span class="keyword">if</span> index &lt; <span class="number">0</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">false</span>, err</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                bnum, err := client.getNumInQuery(<span class="number">1</span>, index)</span><br><span class="line">                <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">false</span>, err</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> bnum == <span class="number">0</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">true</span>, <span class="literal">nil</span></span><br><span class="line">                &#125;</span><br><span class="line">                client.bulkNum = bnum</span><br><span class="line">                client.args = <span class="built_in">make</span>([]*obj.Gobj, bnum)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 读取所有 bulk string</span></span><br><span class="line">        <span class="keyword">for</span> client.bulkNum &gt; <span class="number">0</span> &#123;</span><br><span class="line">                <span class="comment">// init bulkLen</span></span><br><span class="line">                <span class="keyword">if</span> client.bulkLen == <span class="number">0</span> &#123;</span><br><span class="line">                        index, err := client.findLineInQuery()</span><br><span class="line">                        <span class="keyword">if</span> index &lt; <span class="number">0</span> &#123;</span><br><span class="line">                                <span class="keyword">return</span> <span class="literal">false</span>, err</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        <span class="keyword">if</span> client.queryBuf[<span class="number">0</span>] != <span class="string">'$'</span> &#123;</span><br><span class="line">                                <span class="keyword">return</span> <span class="literal">false</span>, errors.New(<span class="string">"expect $ for bulk length"</span>)</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        blen, err := client.getNumInQuery(<span class="number">1</span>, index)</span><br><span class="line">                        <span class="keyword">if</span> err != <span class="literal">nil</span> || blen == <span class="number">0</span> &#123;</span><br><span class="line">                                <span class="keyword">return</span> <span class="literal">false</span>, err</span><br><span class="line">                        &#125;</span><br><span class="line">                        <span class="keyword">if</span> blen &gt; utils.GODIS_MAX_BULK &#123;</span><br><span class="line">                                <span class="keyword">return</span> <span class="literal">false</span>, errors.New(<span class="string">"too big bulk"</span>)</span><br><span class="line">                        &#125;</span><br><span class="line">                        client.bulkLen = blen</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// read bulk string</span></span><br><span class="line">                <span class="keyword">if</span> client.queryLen &lt; client.bulkLen+<span class="number">2</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">false</span>, <span class="literal">nil</span></span><br><span class="line">                &#125;</span><br><span class="line">                index := client.bulkLen</span><br><span class="line">                <span class="comment">// 判断结尾是否为\r\n</span></span><br><span class="line">                <span class="keyword">if</span> client.queryBuf[index] != <span class="string">'\r'</span> || client.queryBuf[index+<span class="number">1</span>] != <span class="string">'\n'</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">false</span>, errors.New(<span class="string">"expect CRLF for bulk end"</span>)</span><br><span class="line">                &#125;</span><br><span class="line">                client.args[<span class="built_in">len</span>(client.args)-client.bulkNum] = obj.CreateObject(obj.GSTR, <span class="keyword">string</span>(client.queryBuf[:index]))</span><br><span class="line">                client.queryBuf = client.queryBuf[index+<span class="number">2</span>:]</span><br><span class="line">                client.queryLen -= index + <span class="number">2</span></span><br><span class="line">                client.bulkLen = <span class="number">0</span></span><br><span class="line">                client.bulkNum -= <span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后执行对应的命令</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *GodisClient)</span> <span class="title">AddReply</span><span class="params">(o *obj.Gobj)</span></span> &#123;</span><br><span class="line">        c.reply.Append(o)</span><br><span class="line">        o.IncrRefCount()</span><br><span class="line">        server.aeLoop.AddFileEvent(c.fd, ae.AE_WRITABLE, SendReplyToClient, c)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *GodisClient)</span> <span class="title">AddReplyStr</span><span class="params">(str <span class="keyword">string</span>)</span></span> &#123;</span><br><span class="line">        o := obj.CreateObject(obj.GSTR, str)</span><br><span class="line">        c.AddReply(o)</span><br><span class="line">        o.DecrRefCount()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 寻找对应的cmd</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">lookupCommand</span><span class="params">(cmdStr <span class="keyword">string</span>)</span> *<span class="title">GodisCommand</span></span> &#123;</span><br><span class="line">        <span class="keyword">for</span> _, c := <span class="keyword">range</span> cmdTable &#123;</span><br><span class="line">                <span class="keyword">if</span> c.name == cmdStr &#123;</span><br><span class="line">                        <span class="keyword">return</span> &amp;c</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 执行cmd</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">ProcessCommand</span><span class="params">(client *GodisClient)</span></span> &#123;</span><br><span class="line">        cmdStr := client.args[<span class="number">0</span>].StrVal()</span><br><span class="line">        log.Printf(<span class="string">"process command: %v\n"</span>, cmdStr)</span><br><span class="line">        <span class="keyword">if</span> cmdStr == <span class="string">"quit"</span> &#123;</span><br><span class="line">                freeClient(client)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        cmd := lookupCommand(cmdStr)</span><br><span class="line">        <span class="keyword">if</span> cmd == <span class="literal">nil</span> &#123;</span><br><span class="line">                client.AddReplyStr(<span class="string">"-ERR: unknow command"</span>)</span><br><span class="line">                resetClient(client)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> cmd.arity != <span class="built_in">len</span>(client.args) &#123;</span><br><span class="line">                client.AddReplyStr(<span class="string">"-ERR: wrong number of args"</span>)</span><br><span class="line">                resetClient(client)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        cmd.proc(client)</span><br><span class="line">        resetClient(client)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleInlineBuf</span><span class="params">(client *GodisClient)</span> <span class="params">(<span class="keyword">bool</span>, error)</span></span> &#123;</span><br><span class="line">        index, err := client.findLineInQuery()</span><br><span class="line">        <span class="keyword">if</span> index &lt; <span class="number">0</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">false</span>, err</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        subs := strings.Split(<span class="keyword">string</span>(client.queryBuf[:index]), <span class="string">" "</span>)</span><br><span class="line">        client.queryBuf = client.queryBuf[index+<span class="number">2</span>:]</span><br><span class="line">        client.queryLen -= index + <span class="number">2</span></span><br><span class="line">        client.args = <span class="built_in">make</span>([]*obj.Gobj, <span class="built_in">len</span>(subs))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> i, v := <span class="keyword">range</span> subs &#123;</span><br><span class="line">                client.args[i] = obj.CreateObject(obj.GSTR, v)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后调用 SendReplyToClient 注销 client</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 通知client</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">SendReplyToClient</span><span class="params">(loop *ae.AeLoop, fd <span class="keyword">int</span>, extra <span class="keyword">interface</span>&#123;&#125;)</span></span> &#123;</span><br><span class="line">        client := extra.(*GodisClient)</span><br><span class="line">        log.Printf(<span class="string">"SendReplyToClient, reply len:%v\n"</span>, client.reply.Length())</span><br><span class="line">        <span class="keyword">for</span> client.reply.Length() &gt; <span class="number">0</span> &#123;</span><br><span class="line">                rep := client.reply.First()</span><br><span class="line">                buf := []<span class="keyword">byte</span>(rep.Val.StrVal())</span><br><span class="line">                bufLen := <span class="built_in">len</span>(buf)</span><br><span class="line">                <span class="keyword">if</span> client.sentLen &lt; bufLen &#123;</span><br><span class="line">                        n, err := net.Write(fd, buf[client.sentLen:])</span><br><span class="line">                        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                                log.Printf(<span class="string">"send reply err: %v\n"</span>, err)</span><br><span class="line">                                freeClient(client)</span><br><span class="line">                                <span class="keyword">return</span></span><br><span class="line">                        &#125;</span><br><span class="line">                        client.sentLen += n</span><br><span class="line">                        log.Printf(<span class="string">"send %v bytes to client:%v\n"</span>, n, client.fd)</span><br><span class="line">                        <span class="keyword">if</span> client.sentLen == bufLen &#123;</span><br><span class="line">                                client.reply.DelNode(rep)</span><br><span class="line">                                rep.Val.DecrRefCount()</span><br><span class="line">                                client.sentLen = <span class="number">0</span></span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                <span class="keyword">break</span></span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> client.reply.Length() == <span class="number">0</span> &#123;</span><br><span class="line">                client.sentLen = <span class="number">0</span></span><br><span class="line">                loop.RemoveFileEvent(fd, ae.AE_WRITABLE)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="生产环境应用"><a href="#生产环境应用" class="headerlink" title="生产环境应用"></a>生产环境应用</h1><p>由于 redis 是单线程（即使在 4.0 后加入多线程也仅仅是在网络层，在储存层依旧是单线程），在真实的生产环境开发中，往往选择 1 核/2G 或者 2 核/4G 作为单例，采取多实例去集群部署。<br>在集群部署的时候，部署通信策略往往更为重要，目前有以下几种策略：</p>
+<ul>
+<li>Smart client：这种是最简单且不好的形式，即 client 来计算（比如通过 hash）存储到哪个实例上</li>
+<li>Redis cluster：这是官方提供的集群部署方式，redis 实例间相同通信来自动分配，但是这种情况在扩容的时候，会引发大量的 k-v 移动，而且在集群数量大的时候，即使是单个实例错误率很低（比如 1%），在大集群时（比如上万）集群的错误率也是不可忽视的。</li>
+<li>proxy： 这是业界主流的策略，即在 client 层和 redis 层之间添加一层 proxy 来代理计算调度储存分布，并且也可监听底层 redis 状态，出现问题也能及时进行重启等容灾处理，像解决 redis 单核问题的 <a href="https://github.com/dragonflydb/dragonfly" target="_blank" rel="noopener">dragonfly</a> 项目，也是这个设计思路。</li>
+</ul>
+<p>另外在持久化方面，也是在 redis 缓存下加了一层 rocksdb 进行储存，感兴趣的话可以去查查，这里就不展开描述了。</p>
+<h1 id="番外"><a href="#番外" class="headerlink" title="番外"></a>番外</h1><p>goroutine 是协程吗，什么是协程？<br>在用 go 写这个项目的时候，顺便多了解了一下协程这个概念，并且产生了这个疑问。<br>首先先回答什么是协程，在<a href="https://en.cppreference.com/w/cpp/language/coroutines" target="_blank" rel="noopener">C++20</a>中说道 A coroutine is a function that can suspend execution to be resumed later.简单来说可以认为协程是线程里不同的函数，这些函数之间可以相互快速切换。<br>而在 go 中，我们使用的是 go func 的形式去处理，而这个又与协程的描述不相符，在 go 中，goroutine 更像是用户态线程而不是协程。<br>那么协程到底是什么样子呢？其实就是我们 js 的 async/await 的样子,做到了函数之间可以相互快速切换。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">sample</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> result = <span class="keyword">await</span> sampleResolve();</span><br><span class="line">  <span class="built_in">console</span>.log(result);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>但是实际上，只有在 ES7 及以上，底层的实现，才是真正的协程，参考：<a href="https://www.zhihu.com/question/305443189" target="_blank" rel="noopener">https://www.zhihu.com/question/305443189</a></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/golang/" rel="tag"># golang</a>
+          
+            <a href="/tags/redis/" rel="tag"># redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2022/12/22/openfaas架构学习/" rel="next" title="openfaas架构学习">
+                <i class="fa fa-chevron-left"></i> openfaas架构学习
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">19</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">29</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#整体流程总览"><span class="nav-number">2.</span> <span class="nav-text">整体流程总览</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-object"><span class="nav-number">2.1.</span> <span class="nav-text">redis object</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#List"><span class="nav-number">2.2.</span> <span class="nav-text">List</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Dict"><span class="nav-number">2.3.</span> <span class="nav-text">Dict</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Net"><span class="nav-number">2.4.</span> <span class="nav-text">Net</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AeLoop"><span class="nav-number">2.5.</span> <span class="nav-text">AeLoop</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#顶层实现"><span class="nav-number">3.</span> <span class="nav-text">顶层实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-server"><span class="nav-number">3.1.</span> <span class="nav-text">redis server</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis-client"><span class="nav-number">3.2.</span> <span class="nav-text">redis client</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#生产环境应用"><span class="nav-number">4.</span> <span class="nav-text">生产环境应用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#番外"><span class="nav-number">5.</span> <span class="nav-text">番外</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
