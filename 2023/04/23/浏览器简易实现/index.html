@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言之前有写过构建一个极简 deno，主要是对 v8 进行了一层包装成 mini 的 runtime 并且注入了我们自定义的变量，实际上，如果熟练掌握 v8 的使用方法，你可以了解到 jsb 的注入，lynx 的实现等很多底层原理，这次，我们通过实现一个简易的浏览器，来实践一下 v8 的应用。这个浏览器将会包含：  支持执行 js 代码 支持 rust 代码注入 拥有简单的 html parser">
+<meta name="keywords" content="rust,v8,html,css">
+<meta property="og:type" content="article">
+<meta property="og:title" content="实现一个简单的浏览器">
+<meta property="og:url" content="https://akitaSummer.github.io/2023/04/23/浏览器简易实现/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="前言之前有写过构建一个极简 deno，主要是对 v8 进行了一层包装成 mini 的 runtime 并且注入了我们自定义的变量，实际上，如果熟练掌握 v8 的使用方法，你可以了解到 jsb 的注入，lynx 的实现等很多底层原理，这次，我们通过实现一个简易的浏览器，来实践一下 v8 的应用。这个浏览器将会包含：  支持执行 js 代码 支持 rust 代码注入 拥有简单的 html parser">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-browser/akt-browser-index.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-browser/akt-browser-html-parser.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-browser/akt-browser-css-parser.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/mini-browser/layout_tree.jpg">
+<meta property="og:updated_time" content="2023-04-23T15:59:40.450Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="实现一个简单的浏览器">
+<meta name="twitter:description" content="前言之前有写过构建一个极简 deno，主要是对 v8 进行了一层包装成 mini 的 runtime 并且注入了我们自定义的变量，实际上，如果熟练掌握 v8 的使用方法，你可以了解到 jsb 的注入，lynx 的实现等很多底层原理，这次，我们通过实现一个简易的浏览器，来实践一下 v8 的应用。这个浏览器将会包含：  支持执行 js 代码 支持 rust 代码注入 拥有简单的 html parser">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/mini-browser/akt-browser-index.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2023/04/23/浏览器简易实现/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>实现一个简单的浏览器 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2023/04/23/浏览器简易实现/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">实现一个简单的浏览器
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2023-04-23 02:12:44 / 修改时间：23:59:40" itemprop="dateCreated datePublished" datetime="2023-04-23T02:12:44+08:00">2023-04-23</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2023/04/23/浏览器简易实现/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2023/04/23/浏览器简易实现/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>之前有写过构建一个极简 deno，主要是对 v8 进行了一层包装成 mini 的 runtime 并且注入了我们自定义的变量，实际上，如果熟练掌握 v8 的使用方法，你可以了解到 jsb 的注入，lynx 的实现等很多底层原理，这次，我们通过实现一个简易的浏览器，来实践一下 v8 的应用。<br>这个浏览器将会包含：</p>
+<ul>
+<li>支持执行 js 代码</li>
+<li>支持 rust 代码注入</li>
+<li>拥有简单的 html parser 和 css parser</li>
+<li>拥有简单的 ui</li>
+</ul>
+<p>设计图：</p>
+<p><img src="/image/mini-browser/akt-browser-index.png" alt="architecture"></p>
+<h1 id="cli"><a href="#cli" class="headerlink" title="cli"></a>cli</h1><p>首先我们先快速实现一个简单 cli，使我的项目通过<code>open ./examples.html</code>能够启动起来，这里使用了 StructOpt 库来实现。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.rs</span></span><br><span class="line"><span class="keyword">use</span> aktBrowser::cli;</span><br><span class="line"><span class="keyword">use</span> structopt::StructOpt;</span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> opts = cli::opts::Command::from_args();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">match</span> opts &#123;</span><br><span class="line">        cli::opts::Command::Open(opt) =&gt; cli::open::run(opt),</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// cli</span></span><br><span class="line"><span class="keyword">use</span> std::&#123;env, rc::Rc&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> structopt::StructOpt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::&#123;</span><br><span class="line">    ui::views::&#123;init_menu, BrowserView&#125;,</span><br><span class="line">    utils,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(StructOpt, Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Opts</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> url: <span class="built_in">Option</span>&lt;<span class="built_in">String</span>&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>(opts: Opts) &#123;</span><br><span class="line">    <span class="keyword">let</span> start_url = opts</span><br><span class="line">        .url</span><br><span class="line">        .and_then(|u| <span class="literal">Some</span>(utils::resolves_path(env::current_dir().unwrap(), u)))</span><br><span class="line">        .unwrap_or(<span class="string">"https://akitasummer.github.io"</span>.to_string());</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print!</span>(<span class="string">"url is : &#123;&#125;\n"</span>, start_url);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="html"><a href="#html" class="headerlink" title="html"></a>html</h1><h2 id="dom"><a href="#dom" class="headerlink" title="dom"></a>dom</h2><p>首先我们先定义 html 解析后的 dom 类型，这里我们仅设定 Element 和 Text 两种类型，分别是代表标签和标签内部的文案, 他们都将支持 inner_text 和 inner_html，Element 将支持获取 id 和属性。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// node</span></span><br><span class="line"><span class="keyword">use</span> std::error::Error;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::core::html::parse_without_normalziation;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">NodeType</span></span> &#123;</span><br><span class="line">    Element(super::element::Element),</span><br><span class="line">    Text(super::text::Text),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Node</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> node_type: NodeType,</span><br><span class="line">    <span class="keyword">pub</span> children: <span class="built_in">Vec</span>&lt;<span class="built_in">Box</span>&lt;Node&gt;&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Node &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">inner_text</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.children</span><br><span class="line">            .iter()</span><br><span class="line">            .clone()</span><br><span class="line">            .into_iter()</span><br><span class="line">            .map(|node| <span class="keyword">match</span> &amp;node.node_type &#123;</span><br><span class="line">                NodeType::Text(t) =&gt; t.data.clone(),</span><br><span class="line">                _ =&gt; node.inner_text(),</span><br><span class="line">            &#125;)</span><br><span class="line">            .collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;()</span><br><span class="line">            .join(<span class="string">""</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">inner_html</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.children</span><br><span class="line">            .iter()</span><br><span class="line">            .clone()</span><br><span class="line">            .into_iter()</span><br><span class="line">            .map(|node| node.to_string())</span><br><span class="line">            .collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;()</span><br><span class="line">            .join(<span class="string">""</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">set_inner_html</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, html: <span class="built_in">String</span>) -&gt; <span class="built_in">Result</span>&lt;(), <span class="built_in">Box</span>&lt;dyn Error&gt;&gt; &#123;</span><br><span class="line">        <span class="keyword">let</span> node = parse_without_normalziation(html.as_bytes().into())?;</span><br><span class="line">        <span class="keyword">self</span>.children = node;</span><br><span class="line">        <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">ToString</span> <span class="keyword">for</span> Node &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">to_string</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span>.node_type &#123;</span><br><span class="line">            NodeType::Element(<span class="keyword">ref</span> e) =&gt; &#123;</span><br><span class="line">                <span class="keyword">let</span> attrs = e</span><br><span class="line">                    .attributes</span><br><span class="line">                    .iter()</span><br><span class="line">                    .clone()</span><br><span class="line">                    .into_iter()</span><br><span class="line">                    .map(|(k, v)| <span class="built_in">format!</span>(<span class="string">"&#123;&#125;=\"&#123;&#125;\""</span>, k, v))</span><br><span class="line">                    .collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;()</span><br><span class="line">                    .join(<span class="string">" "</span>);</span><br><span class="line">                <span class="keyword">let</span> children = <span class="keyword">self</span></span><br><span class="line">                    .children</span><br><span class="line">                    .iter()</span><br><span class="line">                    .clone()</span><br><span class="line">                    .into_iter()</span><br><span class="line">                    .map(|node| node.to_string())</span><br><span class="line">                    .collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;()</span><br><span class="line">                    .join(<span class="string">""</span>);</span><br><span class="line">                <span class="keyword">if</span> attrs != <span class="string">""</span> &#123;</span><br><span class="line">                    <span class="built_in">format!</span>(<span class="string">"&lt;&#123;&#125; &#123;&#125;&gt;&#123;&#125;&lt;/&#123;&#125;&gt;"</span>, e.tag_name, attrs, children, e.tag_name)</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="built_in">format!</span>(<span class="string">"&lt;&#123;&#125;&gt;&#123;&#125;&lt;/&#123;&#125;&gt;"</span>, e.tag_name, children, e.tag_name)</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            NodeType::Text(<span class="keyword">ref</span> t) =&gt; t.data.clone(),</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// element</span></span><br><span class="line"><span class="keyword">use</span> super::node::&#123;Node, NodeType&#125;;</span><br><span class="line"><span class="keyword">use</span> std::collections::HashMap;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">type</span> <span class="title">AttrMap</span></span> = HashMap&lt;<span class="built_in">String</span>, <span class="built_in">String</span>&gt;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Element</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> tag_name: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> attributes: AttrMap,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Element &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(name: <span class="built_in">String</span>, attributes: AttrMap, children: <span class="built_in">Vec</span>&lt;<span class="built_in">Box</span>&lt;Node&gt;&gt;) -&gt; <span class="built_in">Box</span>&lt;Node&gt; &#123;</span><br><span class="line">        <span class="built_in">Box</span>::new(Node &#123;</span><br><span class="line">            node_type: NodeType::Element(Element &#123;</span><br><span class="line">                tag_name: name,</span><br><span class="line">                attributes: attributes,</span><br><span class="line">            &#125;),</span><br><span class="line">            children,</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">id</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Option</span>&lt;&amp;<span class="built_in">String</span>&gt; &#123;</span><br><span class="line">        <span class="keyword">self</span>.attributes.get(<span class="string">"id"</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">attributes</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Vec</span>&lt;(<span class="built_in">String</span>, <span class="built_in">String</span>)&gt; &#123;</span><br><span class="line">        <span class="keyword">self</span>.attributes</span><br><span class="line">            .iter()</span><br><span class="line">            .clone()</span><br><span class="line">            .into_iter()</span><br><span class="line">            .map(|(k, v)| (k.to_string(), v.to_string()))</span><br><span class="line">            .collect()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// text</span></span><br><span class="line"><span class="keyword">use</span> super::node::&#123;Node, NodeType&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Text</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> data: <span class="built_in">String</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Text &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(text: <span class="built_in">String</span>) -&gt; <span class="built_in">Box</span>&lt;Node&gt; &#123;</span><br><span class="line">        <span class="built_in">Box</span>::new(Node &#123;</span><br><span class="line">            node_type: NodeType::Text(Text &#123; data: text &#125;),</span><br><span class="line">            children: <span class="built_in">vec!</span>[],</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>由于页面中的所有 node 都会存储在 Document 上，所以我们需要实现一个 Document，用于存储 html 解析后的数据。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> super::node::&#123;Node, NodeType&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Document</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> url: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> document_uri: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> document_element: <span class="built_in">Box</span>&lt;Node&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Document &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(url: <span class="built_in">String</span>, document_uri: <span class="built_in">String</span>, document_element: <span class="built_in">Box</span>&lt;Node&gt;) -&gt; Document &#123;</span><br><span class="line">        Document &#123;</span><br><span class="line">            url: url,</span><br><span class="line">            document_uri: document_uri,</span><br><span class="line">            document_element: document_element,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">collect_tag_inners</span></span>(&amp;<span class="keyword">self</span>, tag_name: &amp;<span class="built_in">str</span>) -&gt; <span class="built_in">Vec</span>&lt;<span class="built_in">String</span>&gt; &#123;</span><br><span class="line">        Self::intl(&amp;<span class="keyword">self</span>.document_element, tag_name)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">intl</span></span>(node: &amp;<span class="built_in">Box</span>&lt;Node&gt;, tag_name: &amp;<span class="built_in">str</span>) -&gt; <span class="built_in">Vec</span>&lt;<span class="built_in">String</span>&gt; &#123;</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">let</span> NodeType::Element(<span class="keyword">ref</span> element) = node.node_type &#123;</span><br><span class="line">            <span class="keyword">if</span> element.tag_name.as_str() == tag_name &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="built_in">vec!</span>[node.inner_text()];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        node.children</span><br><span class="line">            .iter()</span><br><span class="line">            .clone()</span><br><span class="line">            .into_iter()</span><br><span class="line">            .map(|child| Self::intl(child, tag_name))</span><br><span class="line">            .collect::&lt;<span class="built_in">Vec</span>&lt;<span class="built_in">Vec</span>&lt;<span class="built_in">String</span>&gt;&gt;&gt;()</span><br><span class="line">            .into_iter()</span><br><span class="line">            .flatten()</span><br><span class="line">            .collect()</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">get_script_inners</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Vec</span>&lt;<span class="built_in">String</span>&gt; &#123;</span><br><span class="line">        <span class="keyword">self</span>.collect_tag_inners(<span class="string">"script"</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">get_style_inners</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">Vec</span>&lt;<span class="built_in">String</span>&gt; &#123;</span><br><span class="line">        <span class="keyword">self</span>.collect_tag_inners(<span class="string">"style"</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="parser"><a href="#parser" class="headerlink" title="parser"></a>parser</h2><p>有了 dom 相关定义后，我们接下来实现一个简单的 html parser，他的解析逻辑如下：</p>
+<p><img src="/image/mini-browser/akt-browser-html-parser.png" alt="html_parser"></p>
+<p>我们将用<code>&lt; tag_name attributes_key=&quot;attributes_value&quot;&gt;child&lt;/ tag_name &gt;</code>去匹配出 tag_name，attributes 和递归的 child。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> super::dom::&#123;</span><br><span class="line">    document::Document,</span><br><span class="line">    element::&#123;AttrMap, Element&#125;,</span><br><span class="line">    node::Node,</span><br><span class="line">    text::Text,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> super::fetch::Response;</span><br><span class="line"><span class="meta">#[allow(unused_imports)]</span></span><br><span class="line"><span class="keyword">use</span> combine::EasyParser;</span><br><span class="line"><span class="keyword">use</span> combine::&#123;</span><br><span class="line">    attempt,</span><br><span class="line">    error::&#123;StreamError, StringStreamError&#125;,</span><br><span class="line">    many,</span><br><span class="line">    parser::<span class="built_in">char</span>::&#123;newline, space&#125;,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> combine::&#123;between, many1, parser, sep_by, Parser, Stream&#125;;</span><br><span class="line"><span class="keyword">use</span> combine::&#123;choice, error::ParseError&#125;;</span><br><span class="line"><span class="keyword">use</span> combine::&#123;</span><br><span class="line">    parser::<span class="built_in">char</span>::&#123;<span class="built_in">char</span>, letter&#125;,</span><br><span class="line">    satisfy,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> thiserror::Error;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Error, Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">HTMLParseError</span></span> &#123;</span><br><span class="line">    <span class="meta">#[error(<span class="meta-string">"failed to parse; &#123;0&#125;"</span>)]</span></span><br><span class="line">    InvalidResourceError(StringStreamError),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">parse</span></span>(response: Response) -&gt; <span class="built_in">Result</span>&lt;Document, HTMLParseError&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> nodes = parse_without_normalziation(response.data);</span><br><span class="line">    <span class="keyword">match</span> nodes &#123;</span><br><span class="line">        <span class="literal">Ok</span>(nodes) =&gt; &#123;</span><br><span class="line">            <span class="keyword">let</span> document_element = <span class="keyword">if</span> nodes.len() == <span class="number">1</span> &#123;</span><br><span class="line">                nodes.into_iter().nth(<span class="number">0</span>).unwrap()</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                Element::new(<span class="string">"html"</span>.to_string(), AttrMap::new(), nodes)</span><br><span class="line">            &#125;;</span><br><span class="line">            <span class="literal">Ok</span>(Document::new(</span><br><span class="line">                response.url.to_string(),</span><br><span class="line">                response.url.to_string(),</span><br><span class="line">                document_element,</span><br><span class="line">            ))</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="literal">Err</span>(e) =&gt; <span class="literal">Err</span>(e),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// data -&gt; nodes</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">parse_without_normalziation</span></span>(data: <span class="built_in">Vec</span>&lt;<span class="built_in">u8</span>&gt;) -&gt; <span class="built_in">Result</span>&lt;<span class="built_in">Vec</span>&lt;<span class="built_in">Box</span>&lt;Node&gt;&gt;, HTMLParseError&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> body = <span class="built_in">String</span>::from_utf8(data).unwrap();</span><br><span class="line"></span><br><span class="line">    nodes()</span><br><span class="line">        .parse(&amp;body <span class="keyword">as</span> &amp;<span class="built_in">str</span>)</span><br><span class="line">        .map(|(nodes, _)| nodes)</span><br><span class="line">        .map_err(|e| HTMLParseError::InvalidResourceError(e))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// &lt;tag_name attr_name="attr_value" ...&gt;(children)&lt;/tag_name&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">element</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">Box</span>&lt;Node&gt;&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    (open_tag(), nodes(), close_tag()).and_then(</span><br><span class="line">        |((open_tag_name, attributes), children, close_tag_name)| &#123;</span><br><span class="line">            <span class="keyword">if</span> open_tag_name == close_tag_name &#123;</span><br><span class="line">                <span class="literal">Ok</span>(Element::new(open_tag_name, attributes, children))</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="literal">Err</span>(&lt;Input::Error <span class="keyword">as</span> combine::error::ParseError&lt;</span><br><span class="line">                    <span class="built_in">char</span>,</span><br><span class="line">                    Input::Range,</span><br><span class="line">                    Input::Position,</span><br><span class="line">                &gt;&gt;::StreamError::message_static_message(</span><br><span class="line">                    <span class="string">"tag name of open tag and close tag mismatched"</span>,</span><br><span class="line">                ))</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;,</span><br><span class="line">    )</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">text</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">Box</span>&lt;Node&gt;&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    many1(satisfy(|c: <span class="built_in">char</span>| c != <span class="string">'&lt;'</span>)).map(|t| Text::new(t))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// &lt;tag_name attr_name="attr_value"&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">open_tag</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = (<span class="built_in">String</span>, AttrMap)&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">let</span> open_tag_name = many1::&lt;<span class="built_in">String</span>, _, _&gt;(letter());</span><br><span class="line">    <span class="keyword">let</span> open_tag_content = (</span><br><span class="line">        open_tag_name,</span><br><span class="line">        many::&lt;<span class="built_in">String</span>, _, _&gt;(space().or(newline())),</span><br><span class="line">        attributes(),</span><br><span class="line">    )</span><br><span class="line">        .map(|v: (<span class="built_in">String</span>, _, AttrMap)| (v.<span class="number">0</span>, v.<span class="number">2</span>));</span><br><span class="line">    between(<span class="built_in">char</span>(<span class="string">'&lt;'</span>), <span class="built_in">char</span>(<span class="string">'&gt;'</span>), open_tag_content)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// &lt;/tag_name&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">close_tag</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">String</span>&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">let</span> close_tag_name = many1::&lt;<span class="built_in">String</span>, _, _&gt;(letter());</span><br><span class="line">    <span class="keyword">let</span> close_tag_content = (<span class="built_in">char</span>(<span class="string">'/'</span>), close_tag_name).map(|v| v.<span class="number">1</span>);</span><br><span class="line">    between(<span class="built_in">char</span>(<span class="string">'&lt;'</span>), <span class="built_in">char</span>(<span class="string">'&gt;'</span>), close_tag_content)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析所有属性</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">attributes</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = AttrMap&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    sep_by::&lt;<span class="built_in">Vec</span>&lt;(<span class="built_in">String</span>, <span class="built_in">String</span>)&gt;, _, _, _&gt;(</span><br><span class="line">        attribute(),</span><br><span class="line">        many::&lt;<span class="built_in">String</span>, _, _&gt;(space().or(newline())),</span><br><span class="line">    )</span><br><span class="line">    .map(|attrs: <span class="built_in">Vec</span>&lt;(<span class="built_in">String</span>, <span class="built_in">String</span>)&gt;| &#123;</span><br><span class="line">        <span class="keyword">let</span> m: AttrMap = attrs.into_iter().collect();</span><br><span class="line">        m</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  name1="value1" name2="value2"</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">attribute</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = (<span class="built_in">String</span>, <span class="built_in">String</span>)&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">let</span> attribute_name = many1::&lt;<span class="built_in">String</span>, _, _&gt;(letter());</span><br><span class="line">    <span class="keyword">let</span> attribute_inner_value =</span><br><span class="line">        many1::&lt;<span class="built_in">String</span>, _, _&gt;(satisfy(|c: <span class="built_in">char</span>| c != <span class="string">'"'</span>)).map(|x| x.replace(<span class="string">"&amp;quot;"</span>, <span class="string">"\""</span>));</span><br><span class="line">    <span class="keyword">let</span> attribute_value = between(<span class="built_in">char</span>(<span class="string">'"'</span>), <span class="built_in">char</span>(<span class="string">'"'</span>), attribute_inner_value);</span><br><span class="line">    (</span><br><span class="line">        attribute_name,</span><br><span class="line">        many::&lt;<span class="built_in">String</span>, _, _&gt;(space().or(newline())),</span><br><span class="line">        <span class="built_in">char</span>(<span class="string">'='</span>),</span><br><span class="line">        many::&lt;<span class="built_in">String</span>, _, _&gt;(space().or(newline())),</span><br><span class="line">        attribute_value,</span><br><span class="line">    )</span><br><span class="line">        .map(|v| (v.<span class="number">0</span>, v.<span class="number">4</span>))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 使用impl Parser&lt;Input, Output = Box&lt;Node&gt;&gt;会导致返回值类型循环报错</span></span><br><span class="line">parser! &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">nodes</span>[<span class="title">Input</span>]</span>()(Input) -&gt; <span class="built_in">Vec</span>&lt;<span class="built_in">Box</span>&lt;Node&gt;&gt;</span><br><span class="line">    <span class="keyword">where</span> [Input: Stream&lt;Token = <span class="built_in">char</span>&gt;]</span><br><span class="line">    &#123;</span><br><span class="line">        attempt(many(choice((attempt(element()), attempt(text())))))</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="css"><a href="#css" class="headerlink" title="css"></a>css</h1><h2 id="css-rule"><a href="#css-rule" class="headerlink" title="css rule"></a>css rule</h2><p>与 dom 一致，css 解析后也会生成对应的 css rule，将包含选择器类型和对应的属性。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> super::dom::node::&#123;Node, NodeType&#125;;</span><br><span class="line"><span class="keyword">use</span> combine::&#123;</span><br><span class="line">    choice,</span><br><span class="line">    error::StreamError,</span><br><span class="line">    error::StringStreamError,</span><br><span class="line">    many, many1, optional,</span><br><span class="line">    parser::<span class="built_in">char</span>::&#123;<span class="keyword">self</span>, letter, newline, space&#125;,</span><br><span class="line">    sep_by, sep_end_by, ParseError, Parser, Stream,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> thiserror::Error;</span><br><span class="line"></span><br><span class="line"><span class="comment">// style</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Stylesheet</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> rules: <span class="built_in">Vec</span>&lt;Rule&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Stylesheet &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(rules: <span class="built_in">Vec</span>&lt;Rule&gt;) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        Stylesheet &#123; rules: rules &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 规则</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Rule</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> selectors: <span class="built_in">Vec</span>&lt;Selector&gt;,</span><br><span class="line">    <span class="keyword">pub</span> declarations: <span class="built_in">Vec</span>&lt;Declaration&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Rule &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">matches</span></span>(&amp;<span class="keyword">self</span>, n: &amp;<span class="built_in">Box</span>&lt;Node&gt;) -&gt; <span class="built_in">bool</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.selectors.iter().any(|s| s.matches(n))</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">type</span> <span class="title">Selector</span></span> = SimpleSelector;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 选择器类型</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">SimpleSelector</span></span> &#123;</span><br><span class="line">    <span class="comment">// 通用选择器</span></span><br><span class="line">    UniversalSelector,</span><br><span class="line">    <span class="comment">// tag选择器</span></span><br><span class="line">    TypeSelector &#123;</span><br><span class="line">        tag_name: <span class="built_in">String</span>,</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// 方法选择器</span></span><br><span class="line">    AttributeSelector &#123;</span><br><span class="line">        tag_name: <span class="built_in">String</span>,</span><br><span class="line">        op: AttributeSelectorOp,</span><br><span class="line">        attribute: <span class="built_in">String</span>,</span><br><span class="line">        value: <span class="built_in">String</span>,</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// 类型选择器</span></span><br><span class="line">    ClassSelector &#123;</span><br><span class="line">        class_name: <span class="built_in">String</span>,</span><br><span class="line">    &#125;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">AttributeSelectorOp</span></span> &#123;</span><br><span class="line">    <span class="built_in">Eq</span>,      <span class="comment">// =</span></span><br><span class="line">    Contain, <span class="comment">// ~=</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> SimpleSelector &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">matches</span></span>(&amp;<span class="keyword">self</span>, n: &amp;<span class="built_in">Box</span>&lt;Node&gt;) -&gt; <span class="built_in">bool</span> &#123;</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span> &#123;</span><br><span class="line">            SimpleSelector::UniversalSelector =&gt; <span class="literal">true</span>,</span><br><span class="line">            SimpleSelector::TypeSelector &#123; tag_name &#125; =&gt; <span class="keyword">match</span> n.node_type &#123;</span><br><span class="line">                NodeType::Element(<span class="keyword">ref</span> e) =&gt; e.tag_name.as_str() == tag_name,</span><br><span class="line">                _ =&gt; <span class="literal">false</span>,</span><br><span class="line">            &#125;,</span><br><span class="line">            SimpleSelector::AttributeSelector &#123;</span><br><span class="line">                tag_name,</span><br><span class="line">                op,</span><br><span class="line">                attribute,</span><br><span class="line">                value,</span><br><span class="line">            &#125; =&gt; <span class="keyword">match</span> n.node_type &#123;</span><br><span class="line">                NodeType::Element(<span class="keyword">ref</span> e) =&gt; &#123;</span><br><span class="line">                    e.tag_name.as_str() == tag_name</span><br><span class="line">                        &amp;&amp; <span class="keyword">match</span> op &#123;</span><br><span class="line">                            AttributeSelectorOp::<span class="built_in">Eq</span> =&gt; e.attributes.get(attribute) == <span class="literal">Some</span>(value),</span><br><span class="line">                            AttributeSelectorOp::Contain =&gt; e</span><br><span class="line">                                .attributes</span><br><span class="line">                                .get(attribute)</span><br><span class="line">                                .map(|value| &#123;</span><br><span class="line">                                    value</span><br><span class="line">                                        .split_ascii_whitespace()</span><br><span class="line">                                        .find(|v| v == value)</span><br><span class="line">                                        .is_some()</span><br><span class="line">                                &#125;)</span><br><span class="line">                                .unwrap_or(<span class="literal">false</span>),</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                _ =&gt; <span class="literal">false</span>,</span><br><span class="line">            &#125;,</span><br><span class="line">            SimpleSelector::ClassSelector &#123; class_name &#125; =&gt; <span class="keyword">match</span> n.node_type &#123;</span><br><span class="line">                NodeType::Element(<span class="keyword">ref</span> e) =&gt; e.attributes.get(<span class="string">"class"</span>) == <span class="literal">Some</span>(class_name),</span><br><span class="line">                _ =&gt; <span class="literal">false</span>,</span><br><span class="line">            &#125;,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Declaration</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> name: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> value: CSSValue,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// css value可以是 ’flex‘这样的字符串，也可以是10em这样的数字</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Clone)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">CSSValue</span></span> &#123;</span><br><span class="line">    Keyword(<span class="built_in">String</span>),</span><br><span class="line">    Length((<span class="built_in">usize</span>, Unit)),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 单位，仅实现em</span></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Clone)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">Unit</span></span> &#123;</span><br><span class="line">    Em,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="css-parser"><a href="#css-parser" class="headerlink" title="css parser"></a>css parser</h2><p>我们接下来实现一个简单的 css parser，他的解析逻辑如下：</p>
+<p><img src="/image/mini-browser/akt-browser-css-parser.png" alt="css_parser"></p>
+<p>我们将用<code>simple_selector { declaration_key: declaration_value }</code>去匹配出 simple_selector 和 declarations。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#[derive(Error, Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">CSSParseError</span></span> &#123;</span><br><span class="line">    <span class="meta">#[error(<span class="meta-string">"failed to parse; &#123;0&#125;"</span>)]</span></span><br><span class="line">    InvalidResourceError(StringStreamError),</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 得到Stylesheet</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">parse</span></span>(raw: <span class="built_in">String</span>) -&gt; <span class="built_in">Result</span>&lt;Stylesheet, CSSParseError&gt; &#123;</span><br><span class="line">    rules()</span><br><span class="line">        .parse(raw.as_str())</span><br><span class="line">        .map(|(rules, _)| Stylesheet::new(rules))</span><br><span class="line">        .map_err(|e| CSSParseError::InvalidResourceError(e))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 空格和换行符</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">whitespaces</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">String</span>&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    many::&lt;<span class="built_in">String</span>, _, _&gt;(space().or(newline()))</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 获取所有css规则</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">rules</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">Vec</span>&lt;Rule&gt;&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    (whitespaces(), many(rule().skip(whitespaces()))).map(|(_, rules)| rules)</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 获取一个css规则</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">rule</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = Rule&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    (</span><br><span class="line">        <span class="comment">// 获取选择器</span></span><br><span class="line">        selectors().skip(whitespaces()),</span><br><span class="line">        <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">'&#123;'</span>).skip(whitespaces()),</span><br><span class="line">        <span class="comment">// 获取属性</span></span><br><span class="line">        declarations().skip(whitespaces()),</span><br><span class="line">        <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">'&#125;'</span>),</span><br><span class="line">    )</span><br><span class="line">        .map(|(selectors, _, declarations, _)| Rule &#123;</span><br><span class="line">            selectors: selectors,</span><br><span class="line">            declarations,</span><br><span class="line">        &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析选择器, .class or .class_1, .class_2</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">selectors</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">Vec</span>&lt;Selector&gt;&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    sep_by(</span><br><span class="line">        selector().skip(whitespaces()),</span><br><span class="line">        <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">','</span>).skip(whitespaces()),</span><br><span class="line">    )</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">selector</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = Selector&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    simple_selector()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析选择器</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">simple_selector</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = SimpleSelector&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 通用选择器以*开头</span></span><br><span class="line">    <span class="keyword">let</span> universal_selector = <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">'*'</span>).map(|_| SimpleSelector::UniversalSelector);</span><br><span class="line">    <span class="comment">// class选择器以.开头</span></span><br><span class="line">    <span class="keyword">let</span> class_selector =</span><br><span class="line">        (<span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">'.'</span>), many1(letter())).map(|(_, class_name)| SimpleSelector::ClassSelector &#123;</span><br><span class="line">            class_name: class_name,</span><br><span class="line">        &#125;);</span><br><span class="line">    <span class="comment">// 属性选择器需要先解析出tag,再解析出属性</span></span><br><span class="line">    <span class="keyword">let</span> type_or_attribute_selector = (</span><br><span class="line">        <span class="comment">// tag</span></span><br><span class="line">        many1(letter()).skip(whitespaces()),</span><br><span class="line">        <span class="comment">// [xxx=xxx] or [xxx~=xxx]</span></span><br><span class="line">        optional((</span><br><span class="line">            <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">'['</span>).skip(whitespaces()),</span><br><span class="line">            many1(letter()),</span><br><span class="line">            choice((<span class="built_in">char</span>::string(<span class="string">"="</span>), <span class="built_in">char</span>::string(<span class="string">"~="</span>))),</span><br><span class="line">            many1(letter()),</span><br><span class="line">            <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">']'</span>),</span><br><span class="line">        )),</span><br><span class="line">    )</span><br><span class="line">        .and_then(|(tag_name, opts)| <span class="keyword">match</span> opts &#123;</span><br><span class="line">            <span class="literal">Some</span>((_, attribute, op, value, _)) =&gt; &#123;</span><br><span class="line">                <span class="keyword">let</span> op = <span class="keyword">match</span> op &#123;</span><br><span class="line">                    <span class="string">"="</span> =&gt; AttributeSelectorOp::<span class="built_in">Eq</span>,</span><br><span class="line">                    <span class="string">"~="</span> =&gt; AttributeSelectorOp::Contain,</span><br><span class="line">                    _ =&gt; &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="literal">Err</span>(&lt;Input::Error <span class="keyword">as</span> combine::error::ParseError&lt;</span><br><span class="line">                            <span class="built_in">char</span>,</span><br><span class="line">                            Input::Range,</span><br><span class="line">                            Input::Position,</span><br><span class="line">                        &gt;&gt;::StreamError::message_static_message(</span><br><span class="line">                            <span class="string">"invalid attribute selector op"</span>,</span><br><span class="line">                        ))</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;;</span><br><span class="line">                <span class="literal">Ok</span>(SimpleSelector::AttributeSelector &#123;</span><br><span class="line">                    tag_name: tag_name,</span><br><span class="line">                    attribute: attribute,</span><br><span class="line">                    op: op,</span><br><span class="line">                    value: value,</span><br><span class="line">                &#125;)</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="literal">None</span> =&gt; <span class="literal">Ok</span>(SimpleSelector::TypeSelector &#123; tag_name: tag_name &#125;),</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">    choice((</span><br><span class="line">        universal_selector,</span><br><span class="line">        class_selector,</span><br><span class="line">        type_or_attribute_selector,</span><br><span class="line">    ))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 匹配css每一项和；</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">declarations</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = <span class="built_in">Vec</span>&lt;Declaration&gt;&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    sep_end_by(</span><br><span class="line">        declaration().skip(whitespaces()),</span><br><span class="line">        <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">';'</span>).skip(whitespaces()),</span><br><span class="line">    )</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 匹配css的每一项</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">declaration</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = Declaration&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 匹配 key, :, css_value</span></span><br><span class="line">    (</span><br><span class="line">        many1(letter()).skip(whitespaces()),</span><br><span class="line">        <span class="built_in">char</span>::<span class="built_in">char</span>(<span class="string">':'</span>).skip(whitespaces()),</span><br><span class="line">        css_value(),</span><br><span class="line">    )</span><br><span class="line">        .map(|(k, _, v)| Declaration &#123; name: k, value: v &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析css的value</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">css_value</span></span>&lt;Input&gt;() -&gt; <span class="keyword">impl</span> Parser&lt;Input, Output = CSSValue&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    Input: Stream&lt;Token = <span class="built_in">char</span>&gt;,</span><br><span class="line">    Input::Error: ParseError&lt;Input::Token, Input::Range, Input::Position&gt;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 匹配字母</span></span><br><span class="line">    <span class="keyword">let</span> keyword = many1(letter()).map(|s| CSSValue::Keyword(s));</span><br><span class="line">    <span class="comment">// 匹配数字加em</span></span><br><span class="line">    <span class="keyword">let</span> length = (</span><br><span class="line">        many1(<span class="built_in">char</span>::digit()).map(|s: <span class="built_in">String</span>| s.parse::&lt;<span class="built_in">usize</span>&gt;().unwrap()),</span><br><span class="line">        <span class="built_in">char</span>::string(<span class="string">"em"</span>),</span><br><span class="line">    )</span><br><span class="line">        .map(|(num, _unit)| CSSValue::Length((num, Unit::Em)));</span><br><span class="line">    choice((keyword, length))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="layout"><a href="#layout" class="headerlink" title="layout"></a>layout</h1><p>当我们得到了 css tree 和 dom tree 后，我们就可以结合生成我们的 layout tree 了，首先我们先定义 layout node 的数据格式。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> super::&#123;</span><br><span class="line">    css::&#123;<span class="keyword">self</span>, CSSValue, Stylesheet&#125;,</span><br><span class="line">    dom::&#123;</span><br><span class="line">        document::Document,</span><br><span class="line">        node::&#123;Node, NodeType&#125;,</span><br><span class="line">    &#125;,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> std::collections::HashMap;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">type</span> <span class="title">PropertyMap</span></span> = HashMap&lt;<span class="built_in">String</span>, CSSValue&gt;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">Display</span></span> &#123;</span><br><span class="line">    Inline,</span><br><span class="line">    Block,</span><br><span class="line">    <span class="literal">None</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">StyledDocument</span></span>&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> document_element: StyledNode&lt;<span class="symbol">'a</span>&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">StyledNode</span></span>&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> node_type: &amp;<span class="symbol">'a</span> NodeType,</span><br><span class="line">    <span class="keyword">pub</span> properties: PropertyMap,</span><br><span class="line">    <span class="keyword">pub</span> children: <span class="built_in">Vec</span>&lt;StyledNode&lt;<span class="symbol">'a</span>&gt;&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span>&lt;<span class="symbol">'a</span>&gt; StyledNode&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">display</span></span>(&amp;<span class="keyword">self</span>) -&gt; Display &#123;</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span>.properties.get(<span class="string">"display"</span>) &#123;</span><br><span class="line">            <span class="literal">Some</span>(CSSValue::Keyword(s)) =&gt; <span class="keyword">match</span> s.as_str() &#123;</span><br><span class="line">                <span class="string">"block"</span> =&gt; Display::Block,</span><br><span class="line">                <span class="string">"none"</span> =&gt; Display::<span class="literal">None</span>,</span><br><span class="line">                _ =&gt; Display::Inline,</span><br><span class="line">            &#125;,</span><br><span class="line">            _ =&gt; Display::Inline,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> DEFAULT_STYLESHEET: &amp;<span class="built_in">str</span> = r#<span class="string">"</span></span><br><span class="line"><span class="string">script, style &#123;</span></span><br><span class="line"><span class="string">    display: none;</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">p, div &#123;</span></span><br><span class="line"><span class="string">    display: block;</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">"</span>#;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">to_styled_document</span></span>&lt;<span class="symbol">'a</span>&gt;(document: &amp;<span class="symbol">'a</span> Document) -&gt; StyledDocument&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> styles = <span class="built_in">format!</span>(</span><br><span class="line">        <span class="string">"&#123;&#125;\n&#123;&#125;"</span>,</span><br><span class="line">        DEFAULT_STYLESHEET.to_string(),</span><br><span class="line">        document.get_style_inners().join(<span class="string">"\n"</span>)</span><br><span class="line">    );</span><br><span class="line">    <span class="keyword">let</span> stylesheet = css::parse(styles).unwrap_or(Stylesheet::new(<span class="built_in">vec!</span>[]));</span><br><span class="line">    <span class="keyword">let</span> document_element = to_styled_node(&amp;document.document_element, &amp;stylesheet);</span><br><span class="line"></span><br><span class="line">    StyledDocument &#123;</span><br><span class="line">        document_element: document_element,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">to_styled_node</span></span>&lt;<span class="symbol">'a</span>&gt;(node: &amp;<span class="symbol">'a</span> <span class="built_in">Box</span>&lt;Node&gt;, stylesheet: &amp;Stylesheet) -&gt; StyledNode&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> props = PropertyMap::new();</span><br><span class="line">    <span class="keyword">let</span> children = to_styled_nodes(&amp;node.children, stylesheet);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> matched_rule <span class="keyword">in</span> stylesheet.rules.iter().filter(|r| r.matches(node)) &#123;</span><br><span class="line">        <span class="keyword">for</span> declaration <span class="keyword">in</span> &amp;matched_rule.declarations &#123;</span><br><span class="line">            props.insert(declaration.name.clone(), declaration.value.clone());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    StyledNode &#123;</span><br><span class="line">        node_type: &amp;node.node_type,</span><br><span class="line">        properties: props,</span><br><span class="line">        children: children,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">to_styled_nodes</span></span>&lt;<span class="symbol">'a</span>&gt;(nodes: &amp;<span class="symbol">'a</span> <span class="built_in">Vec</span>&lt;<span class="built_in">Box</span>&lt;Node&gt;&gt;, stylesheet: &amp;Stylesheet) -&gt; <span class="built_in">Vec</span>&lt;StyledNode&lt;<span class="symbol">'a</span>&gt;&gt; &#123;</span><br><span class="line">    nodes</span><br><span class="line">        .iter()</span><br><span class="line">        .map(|x| to_styled_node(x, stylesheet))</span><br><span class="line">        .collect()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后实现整体 layout tree 的构建。</p>
+<p><img src="/image/mini-browser/layout_tree.jpg" alt="layout_tree"></p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> super::style::&#123;Display, StyledDocument&#125;;</span><br><span class="line"><span class="keyword">use</span> super::&#123;</span><br><span class="line">    dom::node::NodeType,</span><br><span class="line">    style::&#123;PropertyMap, StyledNode&#125;,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">LayoutDocument</span></span>&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> top_box: LayoutBox&lt;<span class="symbol">'a</span>&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">LayoutBox</span></span>&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> box_type: BoxType,</span><br><span class="line">    <span class="keyword">pub</span> box_props: <span class="built_in">Option</span>&lt;BoxProps&lt;<span class="symbol">'a</span>&gt;&gt;,</span><br><span class="line">    <span class="keyword">pub</span> children: <span class="built_in">Vec</span>&lt;LayoutBox&lt;<span class="symbol">'a</span>&gt;&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">BoxType</span></span> &#123;</span><br><span class="line">    BlockBox,</span><br><span class="line">    InlineBox,</span><br><span class="line">    NoneBox,</span><br><span class="line">    AnonymousBox,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">BoxProps</span></span>&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> node_type: &amp;<span class="symbol">'a</span> NodeType,</span><br><span class="line">    <span class="keyword">pub</span> properties: PropertyMap,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span>&lt;<span class="symbol">'a</span>&gt; LayoutBox&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">inline_container</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; &amp;<span class="keyword">mut</span> LayoutBox&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span>.box_type &#123;</span><br><span class="line">            BoxType::InlineBox | BoxType::NoneBox | BoxType::AnonymousBox =&gt; <span class="keyword">self</span>,</span><br><span class="line">            <span class="comment">// 父元素内即包含块级元素又包含行级元素会生成匿名盒子，将行级元素升级为块级元素</span></span><br><span class="line">            BoxType::BlockBox =&gt; &#123;</span><br><span class="line">                <span class="keyword">match</span> <span class="keyword">self</span>.children.last() &#123;</span><br><span class="line">                    <span class="literal">Some</span>(&amp;LayoutBox &#123;</span><br><span class="line">                        box_type: BoxType::AnonymousBox,</span><br><span class="line">                        ..</span><br><span class="line">                    &#125;) =&gt; &#123;&#125;</span><br><span class="line">                    _ =&gt; <span class="keyword">self</span>.children.push(LayoutBox &#123;</span><br><span class="line">                        box_type: BoxType::AnonymousBox,</span><br><span class="line">                        box_props: <span class="literal">None</span>,</span><br><span class="line">                        children: <span class="built_in">vec!</span>[],</span><br><span class="line">                    &#125;),</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">self</span>.children.last_mut().unwrap()</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">inner_text</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.children</span><br><span class="line">            .iter()</span><br><span class="line">            .clone()</span><br><span class="line">            .into_iter()</span><br><span class="line">            .map(|node| <span class="keyword">match</span> node.box_props &#123;</span><br><span class="line">                <span class="literal">Some</span>(BoxProps &#123;</span><br><span class="line">                    node_type: NodeType::Text(t),</span><br><span class="line">                    ..</span><br><span class="line">                &#125;) =&gt; t.data.clone(),</span><br><span class="line">                _ =&gt; node.inner_text(),</span><br><span class="line">            &#125;)</span><br><span class="line">            .collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;()</span><br><span class="line">            .join(<span class="string">""</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">to_layout_document</span></span>&lt;<span class="symbol">'a</span>&gt;(document: StyledDocument&lt;<span class="symbol">'a</span>&gt;) -&gt; LayoutDocument&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> layout_box = to_layout_box(document.document_element);</span><br><span class="line">    LayoutDocument &#123;</span><br><span class="line">        top_box: layout_box,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 有样式的Node -&gt; box</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">to_layout_box</span></span>&lt;<span class="symbol">'a</span>&gt;(snode: StyledNode&lt;<span class="symbol">'a</span>&gt;) -&gt; LayoutBox&lt;<span class="symbol">'a</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> box_type = <span class="keyword">match</span> snode.display() &#123;</span><br><span class="line">        Display::Block =&gt; BoxType::BlockBox,</span><br><span class="line">        Display::Inline =&gt; BoxType::InlineBox,</span><br><span class="line">        Display::<span class="literal">None</span> =&gt; BoxType::NoneBox,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> box_props = BoxProps &#123;</span><br><span class="line">        node_type: snode.node_type,</span><br><span class="line">        properties: snode.properties,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> layout = LayoutBox &#123;</span><br><span class="line">        box_type: box_type,</span><br><span class="line">        box_props: <span class="literal">Some</span>(box_props),</span><br><span class="line">        children: <span class="built_in">vec!</span>[],</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> child <span class="keyword">in</span> snode.children &#123;</span><br><span class="line">        <span class="keyword">match</span> child.display() &#123;</span><br><span class="line">            Display::Block =&gt; &#123;</span><br><span class="line">                layout.children.push(to_layout_box(child));</span><br><span class="line">            &#125;</span><br><span class="line">            Display::Inline =&gt; &#123;</span><br><span class="line">                layout</span><br><span class="line">                    .inline_container()</span><br><span class="line">                    .children</span><br><span class="line">                    .push(to_layout_box(child));</span><br><span class="line">            &#125;</span><br><span class="line">            Display::<span class="literal">None</span> =&gt; &#123;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    layout</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="v8"><a href="#v8" class="headerlink" title="v8"></a>v8</h1><p>由于之前的极简 deno 中详细介绍了 v8 的概念及应用，这里仅简单介绍下使用的到的一些简单概念。</p>
+<ul>
+<li>Isolate：是一个隔离的运行时环境，拥有自己的堆内存，可以理解为一个进程，或者说一个浏览器 tag，你的每一个页面都会生成一个 Isolate。</li>
+<li>Context：Context 包含了 JavaScript 代码执行所需的上下文信息，包括全局变量、函数等。可以这样简单理解，如果需要执行 JavaScript 代码，则需要有一个 Context 环境。</li>
+<li>Handle：指向 V8 拥有的对象的指针，是为了让 V8 的消费者（例如 C++ 代码）可以在与 C++ 代码协作的同时操作 V8 中的 JavaScript 对象并执行垃圾回收。</li>
+<li>HandleScope：一个 Handle 的集合，当 HandleScope 被回收时，内部的所有 Handle 均会被回收。</li>
+</ul>
+<p>v8 的启动流程如下：<br>init v8 -&gt; create isolate -&gt; install extensions -&gt; execute script</p>
+<p>这里我们使用了两种注入变量的方法，第一种是通过 js 进行全局绑定：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// js</span></span><br><span class="line"><span class="string">"use strict"</span>;</span><br><span class="line"></span><br><span class="line">(&#123; print, alert &#125;) =&gt; &#123;</span><br><span class="line">  globalThis.print = (args) =&gt; &#123;</span><br><span class="line">    <span class="keyword">return</span> print(args);</span><br><span class="line">  &#125;;</span><br><span class="line">  window.alert = (args) =&gt; &#123;</span><br><span class="line">    <span class="keyword">return</span> alert(args);</span><br><span class="line">  &#125;;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// rust</span></span><br><span class="line"><span class="keyword">mod</span> binding;</span><br><span class="line"><span class="keyword">mod</span> document;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> std::borrow::Borrow;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> lazy_static::lazy_static;</span><br><span class="line"><span class="keyword">use</span> log::&#123;error, info, trace&#125;;</span><br><span class="line"><span class="keyword">use</span> v8::&#123;</span><br><span class="line">    Context, ContextScope, ExternalReference, ExternalReferences, FunctionCallbackArguments,</span><br><span class="line">    Global, HandleScope, Local, MapFnTo, ReturnValue,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> self::binding::*;</span><br><span class="line"><span class="keyword">use</span> self::document::*;</span><br><span class="line"><span class="keyword">use</span> super::&#123;execute_script, JsRuntimeState&#125;;</span><br><span class="line"><span class="keyword">use</span> crate::ui::components::alert <span class="keyword">as</span> component_alert;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> GLUE: &amp;<span class="built_in">str</span> = <span class="built_in">include_str!</span>(<span class="string">"glue.js"</span>);</span><br><span class="line"></span><br><span class="line">lazy_static! &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="keyword">static</span> <span class="keyword">ref</span> EXTERNAL_REFERNCES: ExternalReferences =</span><br><span class="line">        ExternalReferences::new(&amp;[ExternalReference &#123;</span><br><span class="line">            function: MapFnTo::map_fn_to(print),</span><br><span class="line">        &#125;]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Extensions</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Extensions &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">install</span></span>(scope: &amp;<span class="keyword">mut</span> HandleScope, context: Local&lt;Context&gt;) &#123;</span><br><span class="line">        <span class="comment">// binding window</span></span><br><span class="line">        <span class="keyword">let</span> global = context.global(scope);</span><br><span class="line">        <span class="keyword">let</span> scope = &amp;<span class="keyword">mut</span> v8::ContextScope::new(scope, context);</span><br><span class="line">        initialize_window(scope, global);</span><br><span class="line">        initialize_dom(scope, global);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// binding print and alert</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">let</span> bindings = v8::Object::new(scope);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> name = v8::<span class="built_in">String</span>::new(scope, <span class="string">"print"</span>).unwrap();</span><br><span class="line">            <span class="keyword">let</span> func = v8::Function::new(scope, print).unwrap();</span><br><span class="line">            bindings.set(scope, name.into(), func.into()).unwrap();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> name = v8::<span class="built_in">String</span>::new(scope, <span class="string">"alert"</span>).unwrap();</span><br><span class="line">            <span class="keyword">let</span> func = v8::Function::new(scope, alert).unwrap();</span><br><span class="line">            bindings.set(scope, name.into(), func.into()).unwrap();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Ok</span>(result) = execute_script(scope, GLUE) &#123;</span><br><span class="line">                <span class="keyword">let</span> func = v8::Local::&lt;v8::Function&gt;::try_from(result).unwrap();</span><br><span class="line">                <span class="keyword">let</span> v = v8::undefined(scope).into();</span><br><span class="line">                <span class="keyword">let</span> args = [bindings.into()];</span><br><span class="line">                func.call(scope, v, &amp;args).unwrap();</span><br><span class="line">            &#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">print</span></span>(scope: &amp;<span class="keyword">mut</span> HandleScope, args: FunctionCallbackArguments, <span class="keyword">mut</span> rv: ReturnValue) &#123;</span><br><span class="line">    <span class="keyword">let</span> result: serde_json::Value = serde_v8::from_v8(scope, args.get(<span class="number">0</span>)).unwrap();</span><br><span class="line">    info!(<span class="string">"Rust say: &#123;:#?&#125;"</span>, result);</span><br><span class="line">    rv.set(serde_v8::to_v8(scope, result).unwrap());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">alert</span></span>(scope: &amp;<span class="keyword">mut</span> HandleScope, args: FunctionCallbackArguments, <span class="keyword">mut</span> rv: ReturnValue) &#123;</span><br><span class="line">    <span class="keyword">let</span> message: serde_json::Value = serde_v8::from_v8(scope, args.get(<span class="number">0</span>)).unwrap();</span><br><span class="line">    <span class="keyword">let</span> pv_api_handler = JsRuntimeState::pv_api_handler(scope).unwrap();</span><br><span class="line">    <span class="keyword">match</span> pv_api_handler.alert(message.to_string()) &#123;</span><br><span class="line">        <span class="literal">Ok</span>(_) =&gt; &#123;&#125;</span><br><span class="line">        <span class="literal">Err</span>(e) =&gt; &#123;</span><br><span class="line">            error!(<span class="string">"failed to request alert(); &#123;&#125;"</span>, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">let</span> undefined = v8::undefined(scope);</span><br><span class="line">    rv.set(undefined.into());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>另一种是直接在 rust 往 global 的 context 中直接注入：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">initialize_window</span></span>&lt;<span class="symbol">'s</span>&gt;(</span><br><span class="line">    scope: &amp;<span class="keyword">mut</span> ContextScope&lt;<span class="symbol">'s</span>, HandleScope&gt;,</span><br><span class="line">    global: v8::Local&lt;v8::Object&gt;,</span><br><span class="line">) -&gt; v8::Local&lt;<span class="symbol">'s</span>, v8::Object&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> window = create_object_under(scope, global, <span class="string">"window"</span>);</span><br><span class="line"></span><br><span class="line">    set_accessor_to(</span><br><span class="line">        scope,</span><br><span class="line">        window,</span><br><span class="line">        <span class="string">"name"</span>,</span><br><span class="line">        |scope: &amp;<span class="keyword">mut</span> v8::HandleScope,</span><br><span class="line">         key: v8::Local&lt;v8::Name&gt;,</span><br><span class="line">         _args: v8::PropertyCallbackArguments,</span><br><span class="line">         <span class="keyword">mut</span> rv: v8::ReturnValue| &#123;</span><br><span class="line">            info!(<span class="string">"Read access to: &#123;&#125;"</span>, key.to_rust_string_lossy(scope));</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> window = JsRuntimeState::window(scope);</span><br><span class="line">            <span class="keyword">let</span> window = window.unwrap();</span><br><span class="line">            <span class="keyword">let</span> window = window.borrow_mut();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> value = window.name.as_str();</span><br><span class="line"></span><br><span class="line">            rv.set(v8::<span class="built_in">String</span>::new(scope, value).unwrap().into());</span><br><span class="line">        &#125;,</span><br><span class="line">        |scope: &amp;<span class="keyword">mut</span> v8::HandleScope,</span><br><span class="line">         key: v8::Local&lt;v8::Name&gt;,</span><br><span class="line">         value: v8::Local&lt;v8::Value&gt;,</span><br><span class="line">         _args: v8::PropertyCallbackArguments| &#123;</span><br><span class="line">            info!(<span class="string">"Write access to: &#123;&#125;"</span>, key.to_rust_string_lossy(scope));</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> window = JsRuntimeState::window(scope);</span><br><span class="line">            <span class="keyword">let</span> window = window.unwrap();</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> window = window.borrow_mut();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">let</span> value = value.to_rust_string_lossy(scope);</span><br><span class="line"></span><br><span class="line">            window.name = value;</span><br><span class="line">        &#125;,</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    window</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>两者均可实现为 v8 注入 rust 变量及方法。</p>
+<p>本文中具体的注入逻辑就不贴进来了，感兴趣可以看下源码，简单来说，我们往每个页面的 isolate 的 global context 中注入了 print，alert 方法，往 document 对象中注入了 getElementById 方法，往 window 中注入了 name 变量。</p>
+<h1 id="ui"><a href="#ui" class="headerlink" title="ui"></a>ui</h1><p>ui 怎么绘制，这里就不具体描述了，这里主要写一些如何将 ui，v8 和 layout 结合起来，正常打开一个页面时，我们的流程将是解析 url -&gt; 初始化 ui -&gt; 创建 navigation -&gt; 创建页面 page -&gt; 页面 page 解析 url</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::&#123;env, rc::Rc&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> structopt::StructOpt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::&#123;</span><br><span class="line">    ui::views::&#123;init_menu, BrowserView&#125;,</span><br><span class="line">    utils,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(StructOpt, Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Opts</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> url: <span class="built_in">Option</span>&lt;<span class="built_in">String</span>&gt;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>(opts: Opts) &#123;</span><br><span class="line">    <span class="keyword">let</span> start_url = opts</span><br><span class="line">        .url</span><br><span class="line">        .and_then(|u| <span class="literal">Some</span>(utils::resolves_path(env::current_dir().unwrap(), u)))</span><br><span class="line">        .unwrap_or(<span class="string">"https://akitasummer.github.io"</span>.to_string());</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print!</span>(<span class="string">"url is : &#123;&#125;\n"</span>, start_url);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> siv = cursive::<span class="keyword">default</span>();</span><br><span class="line"></span><br><span class="line">    init_menu(&amp;<span class="keyword">mut</span> siv);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> b = BrowserView::named(Rc::new(siv.cb_sink().clone()));</span><br><span class="line">    b.get_mut().navigate_to(start_url);</span><br><span class="line">    siv.add_fullscreen_layer(b);</span><br><span class="line"></span><br><span class="line">    siv.run();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>页面解析 url 的时候，我们将会先初始化 v8_runtime -&gt; 解析 html -&gt; 获取 layout 渲染 -&gt; 执行 js 代码</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> cursive::&#123;traits::Finder, view::ViewWrapper, views::LinearLayout, CbSink, Cursive, With&#125;;</span><br><span class="line"><span class="keyword">use</span> std::&#123;cell::RefCell, rc::Rc&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> crate::&#123;</span><br><span class="line">    core::&#123;</span><br><span class="line">        dom::document::Document,</span><br><span class="line">        layout::&#123;to_layout_document, LayoutDocument&#125;,</span><br><span class="line">        style::&#123;to_styled_document, StyledDocument&#125;,</span><br><span class="line">        window::Window,</span><br><span class="line">    &#125;,</span><br><span class="line">    javascript::&#123;JsRuntime, JsRuntimeState&#125;,</span><br><span class="line">    ui::&#123;</span><br><span class="line">        api::PageViewAPIHandler,</span><br><span class="line">        render::&#123;to_element_container, ElementContainer&#125;,</span><br><span class="line">    &#125;,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">use</span> log::&#123;error, info&#125;;</span><br><span class="line"><span class="keyword">use</span> thiserror::Error;</span><br><span class="line"></span><br><span class="line"><span class="keyword">use</span> super::PAGE_VIEW_NAME;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Error, Debug, PartialEq)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">enum</span> <span class="title">PageError</span></span> &#123;</span><br><span class="line">    <span class="meta">#[error(<span class="meta-string">"failed to render; no document exists"</span>)]</span></span><br><span class="line">    NoDocumentError,</span><br><span class="line"></span><br><span class="line">    <span class="meta">#[error(<span class="meta-string">"failed to render; javascript execution failed: &#123;0:?&#125;"</span>)]</span></span><br><span class="line">    JavaScriptError(serde_json::Value),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">PageView</span></span> &#123;</span><br><span class="line">    window: <span class="built_in">Option</span>&lt;Rc&lt;RefCell&lt;Window&gt;&gt;&gt;,</span><br><span class="line">    document: <span class="built_in">Option</span>&lt;Rc&lt;RefCell&lt;Document&gt;&gt;&gt;,</span><br><span class="line"></span><br><span class="line">    view: ElementContainer,</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> js_runtime: JsRuntime,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> PageView &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(ui_cb_sink: Rc&lt;CbSink&gt;) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">        (<span class="keyword">Self</span> &#123;</span><br><span class="line">            window: <span class="literal">None</span>,</span><br><span class="line">            document: <span class="literal">None</span>,</span><br><span class="line"></span><br><span class="line">            view: ElementContainer::vertical(),</span><br><span class="line"></span><br><span class="line">            js_runtime: JsRuntime::new(<span class="literal">None</span>),</span><br><span class="line">        &#125;)</span><br><span class="line">        .with(|v| &#123;</span><br><span class="line">            JsRuntimeState::set_pv_api_handler(</span><br><span class="line">                &amp;<span class="keyword">mut</span> v.js_runtime.isolate,</span><br><span class="line">                Rc::new(PageViewAPIHandler::new(ui_cb_sink)),</span><br><span class="line">            );</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">init_page</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, document: Document) -&gt; <span class="built_in">Result</span>&lt;(), PageError&gt; &#123;</span><br><span class="line">        <span class="keyword">let</span> window = Rc::new(RefCell::new(Window &#123;</span><br><span class="line">            name: <span class="string">""</span>.to_string(),</span><br><span class="line">        &#125;));</span><br><span class="line"></span><br><span class="line">        <span class="keyword">let</span> document = Rc::new(RefCell::new(document));</span><br><span class="line"></span><br><span class="line">        <span class="keyword">self</span>.window = <span class="literal">Some</span>(window.clone());</span><br><span class="line">        <span class="keyword">self</span>.document = <span class="literal">Some</span>(document.clone());</span><br><span class="line"></span><br><span class="line">        <span class="keyword">let</span> isolate = &amp;<span class="keyword">mut</span> <span class="keyword">self</span>.js_runtime.isolate;</span><br><span class="line">        JsRuntimeState::set_window(isolate, window.clone());</span><br><span class="line">        JsRuntimeState::set_document(isolate, document.clone());</span><br><span class="line"></span><br><span class="line">        <span class="keyword">self</span>.render_document()?;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">self</span>.execute_inline_scripts()?;</span><br><span class="line"></span><br><span class="line">        <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">render_document</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; <span class="built_in">Result</span>&lt;(), PageError&gt; &#123;</span><br><span class="line">        <span class="keyword">let</span> document = <span class="keyword">match</span> &amp;<span class="keyword">self</span>.document &#123;</span><br><span class="line">            <span class="literal">Some</span>(w) =&gt; w,</span><br><span class="line">            <span class="literal">None</span> =&gt; <span class="keyword">return</span> <span class="literal">Err</span>(PageError::NoDocumentError),</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">let</span> document = &amp;*document.borrow_mut();</span><br><span class="line">        <span class="keyword">let</span> styled: StyledDocument = to_styled_document(document);</span><br><span class="line">        <span class="keyword">let</span> layout: LayoutDocument = to_layout_document(styled);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">self</span>.view = to_element_container(&amp;layout.top_box);</span><br><span class="line"></span><br><span class="line">        <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">execute_inline_scripts</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; <span class="built_in">Result</span>&lt;(), PageError&gt; &#123;</span><br><span class="line">        <span class="keyword">let</span> scripts = &#123;</span><br><span class="line">            <span class="keyword">let</span> document = <span class="keyword">match</span> &amp;<span class="keyword">self</span>.document &#123;</span><br><span class="line">                <span class="literal">Some</span>(w) =&gt; w,</span><br><span class="line">                <span class="literal">None</span> =&gt; <span class="keyword">return</span> <span class="literal">Err</span>(PageError::NoDocumentError),</span><br><span class="line">            &#125;;</span><br><span class="line">            <span class="keyword">let</span> document = document.borrow_mut();</span><br><span class="line">            document.get_script_inners()</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> script <span class="keyword">in</span> scripts &#123;</span><br><span class="line">            <span class="keyword">match</span> <span class="keyword">self</span>.js_runtime.execute_script(script.as_str()) &#123;</span><br><span class="line">                <span class="literal">Ok</span>(s) =&gt; &#123;</span><br><span class="line">                    info!(<span class="string">"javascript execution succeeded; &#123;&#125;"</span>, s);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="literal">Err</span>(e) =&gt; <span class="keyword">return</span> <span class="literal">Err</span>(PageError::JavaScriptError(e)),</span><br><span class="line">            &#125;;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> ViewWrapper <span class="keyword">for</span> PageView &#123;</span><br><span class="line">    <span class="class"><span class="keyword">type</span> <span class="title">V</span></span> = LinearLayout;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">with_view</span></span>&lt;F, R&gt;(&amp;<span class="keyword">self</span>, f: F) -&gt; ::std::option::<span class="built_in">Option</span>&lt;R&gt;</span><br><span class="line">    <span class="keyword">where</span></span><br><span class="line">        F: <span class="built_in">FnOnce</span>(&amp;Self::V) -&gt; R,</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="literal">Some</span>(f(&amp;<span class="keyword">self</span>.view))</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">with_view_mut</span></span>&lt;F, R&gt;(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, f: F) -&gt; ::std::option::<span class="built_in">Option</span>&lt;R&gt;</span><br><span class="line">    <span class="keyword">where</span></span><br><span class="line">        F: ::std::ops::<span class="built_in">FnOnce</span>(&amp;<span class="keyword">mut</span> Self::V) -&gt; R,</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="literal">Some</span>(f(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>.view))</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">into_inner</span></span>(<span class="keyword">self</span>) -&gt; ::std::result::<span class="built_in">Result</span>&lt;Self::V, <span class="keyword">Self</span>&gt;</span><br><span class="line">    <span class="keyword">where</span></span><br><span class="line">        Self::V: ::std::marker::<span class="built_in">Sized</span>,</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="literal">Ok</span>(<span class="keyword">self</span>.view)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">with_current_page_view</span></span>&lt;Output, F&gt;(s: &amp;<span class="keyword">mut</span> Cursive, f: F) -&gt; <span class="built_in">Option</span>&lt;Output&gt;</span><br><span class="line"><span class="keyword">where</span></span><br><span class="line">    F: <span class="built_in">FnOnce</span>(&amp;<span class="keyword">mut</span> PageView) -&gt; Output,</span><br><span class="line">&#123;</span><br><span class="line">    s.screen_mut().call_on_name(PAGE_VIEW_NAME, f)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><p>感兴趣的话可以去我的 github 上 clone 下来，使用<code>cargo check</code>&amp;&amp;<code>cargo run open ./examples/sample.html</code>，通过这个项目，你可以进一步理解思考浏览器的运行原理，lynx 和 pia 的底层实现</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/rust/" rel="tag"># rust</a>
+          
+            <a href="/tags/v8/" rel="tag"># v8</a>
+          
+            <a href="/tags/html/" rel="tag"># html</a>
+          
+            <a href="/tags/css/" rel="tag"># css</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2023/01/28/redis架构设计学习/" rel="next" title="redis架构设计学习">
+                <i class="fa fa-chevron-left"></i> redis架构设计学习
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">20</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">32</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#cli"><span class="nav-number">2.</span> <span class="nav-text">cli</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#html"><span class="nav-number">3.</span> <span class="nav-text">html</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#dom"><span class="nav-number">3.1.</span> <span class="nav-text">dom</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#parser"><span class="nav-number">3.2.</span> <span class="nav-text">parser</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#css"><span class="nav-number">4.</span> <span class="nav-text">css</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#css-rule"><span class="nav-number">4.1.</span> <span class="nav-text">css rule</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#css-parser"><span class="nav-number">4.2.</span> <span class="nav-text">css parser</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#layout"><span class="nav-number">5.</span> <span class="nav-text">layout</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#v8"><span class="nav-number">6.</span> <span class="nav-text">v8</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ui"><span class="nav-number">7.</span> <span class="nav-text">ui</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#最后"><span class="nav-number">8.</span> <span class="nav-text">最后</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
