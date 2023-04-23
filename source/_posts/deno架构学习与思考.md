@@ -176,7 +176,7 @@ deno_runtime: 可自定义的 deno runtime
 
 serverless framework
 ![isolates_vs_wasm](/image/deno-architecture/isolates_vs_wasm.png)
-![deno_runtime](/image/deno-architecture/deno_runtime.png)
+![deno_runtime](/image/deno-architecture/deno_runtime.jpg)
 ![serverless](/image/deno-architecture/serverless.jpg)
 Cross platform framwork
 ![cross_platform](/image/deno-architecture/cross_platform.png)
