@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言平常收集到的场景设计题，比较杂，仅作为笔记使用 短网址系统设计题目 分为两个接口   从一个长网址生成一个短网址。需要考虑：同一个长网址，多次创建的短网址是否相同 用户访问短网址时，需要能跳回到原始的长网址   需要考虑跨机房部署问题 考虑跨海域全球部署问题 考虑统计某个域名下的 URL/host 访问 uv 和 pv  答案 一开始需要能考虑系统承载容量，例如：   每天 100 亿访问量">
+<meta name="keywords" content="场景设计">
+<meta property="og:type" content="article">
+<meta property="og:title" content="简单的场景设计题">
+<meta property="og:url" content="https://akitaSummer.github.io/2023/06/13/简单的场景设计题/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="前言平常收集到的场景设计题，比较杂，仅作为笔记使用 短网址系统设计题目 分为两个接口   从一个长网址生成一个短网址。需要考虑：同一个长网址，多次创建的短网址是否相同 用户访问短网址时，需要能跳回到原始的长网址   需要考虑跨机房部署问题 考虑跨海域全球部署问题 考虑统计某个域名下的 URL/host 访问 uv 和 pv  答案 一开始需要能考虑系统承载容量，例如：   每天 100 亿访问量">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2023-06-13T14:52:24.852Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="简单的场景设计题">
+<meta name="twitter:description" content="前言平常收集到的场景设计题，比较杂，仅作为笔记使用 短网址系统设计题目 分为两个接口   从一个长网址生成一个短网址。需要考虑：同一个长网址，多次创建的短网址是否相同 用户访问短网址时，需要能跳回到原始的长网址   需要考虑跨机房部署问题 考虑跨海域全球部署问题 考虑统计某个域名下的 URL/host 访问 uv 和 pv  答案 一开始需要能考虑系统承载容量，例如：   每天 100 亿访问量">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2023/06/13/简单的场景设计题/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>简单的场景设计题 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2023/06/13/简单的场景设计题/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">简单的场景设计题
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2023-06-13 11:02:33 / 修改时间：22:52:24" itemprop="dateCreated datePublished" datetime="2023-06-13T11:02:33+08:00">2023-06-13</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2023/06/13/简单的场景设计题/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2023/06/13/简单的场景设计题/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>平常收集到的场景设计题，比较杂，仅作为笔记使用</p>
+<h1 id="短网址系统设计"><a href="#短网址系统设计" class="headerlink" title="短网址系统设计"></a>短网址系统设计</h1><h2 id="题目"><a href="#题目" class="headerlink" title="题目"></a>题目</h2><ol>
+<li>分为两个接口</li>
+</ol>
+<ul>
+<li>从一个长网址生成一个短网址。需要考虑：同一个长网址，多次创建的短网址是否相同</li>
+<li>用户访问短网址时，需要能跳回到原始的长网址</li>
+</ul>
+<ol start="2">
+<li>需要考虑跨机房部署问题</li>
+<li>考虑跨海域全球部署问题</li>
+<li>考虑统计某个域名下的 URL/host 访问 uv 和 pv</li>
+</ol>
+<h2 id="答案"><a href="#答案" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>一开始需要能考虑系统承载容量，例如：</li>
+</ol>
+<ul>
+<li>每天 100 亿访问量</li>
+<li>每天生成 1000w 条短网址记录</li>
+</ul>
+<ol start="2">
+<li>然后考虑短网址的生成算法，方案有很多种</li>
+</ol>
+<ul>
+<li>最简单实现：自增 id 实现，这个不可逆，同一个长网址会生成多个短网址</li>
+<li>hash+序号冲突</li>
+<li>使用 kv 存储双向对应关系，可逆，但存储用量比较大</li>
+</ul>
+<ol start="3">
+<li>302 跳转问题，附带可以讨论网址访问量计数问题</li>
+<li>需要考虑跨机房部署问题</li>
+<li>考虑跨海域全球部署问题</li>
+<li>能给出合理的统计需求，例如用 hadoop 做 MR</li>
+</ol>
+<h1 id="计数系统设计"><a href="#计数系统设计" class="headerlink" title="计数系统设计"></a>计数系统设计</h1><h2 id="题目-1"><a href="#题目-1" class="headerlink" title="题目"></a>题目</h2><p>希望能够有一个统一的计数服务来满足该需求，主要功能要求根据业务需求查询指定的文章的计数统计（播放数，阅读数，评论数等），要求：支持实时更新各种计数，支持高并发查询，需要给出系统存储设计方案，对外输出接口设计；</p>
+<h2 id="答案-1"><a href="#答案-1" class="headerlink" title="答案"></a>答案</h2><ol>
+<li><p>方案一：直接使用数据库+cache 的方案，方案简单有效，数据量大之后采用分库方案，扩展性有限，但开发和运维成本低，性能方面通过 cache 优化，存在热点数据（可能导致 cache 经常被清理）；</p>
+</li>
+<li><p>方案二：采用 redis 作为 kv 存储，查询效率足够高，但需要考虑资源使用问题，假设有 10 亿的文章，帖子和评论，如何保证以更低的成本满足该需求；主要问题需要较多资源，成本较高，如何设计更好数据结构；</p>
+</li>
+<li><p>方案三：可以自己开发 counter 模块，需要考虑 kv 存储方案，value 的设计，保证使用更少内存；还需要考虑的点：容灾备份机制；数据扩展问题；</p>
+</li>
+<li><p>方案四：可能业务方经常新增计数需求，需要考虑 counter 服务的列扩展性，故设计的数据结构需要考虑列扩展问题；</p>
+</li>
+<li><p>其他：业务写入 QPS 可能比较高，考虑写入压力问题，数据写入去重问题，即同一个用户转发之类操作需要幂等性（一定程度保证即可）</p>
+</li>
+</ol>
+<h1 id="直播消息服务设计"><a href="#直播消息服务设计" class="headerlink" title="直播消息服务设计"></a>直播消息服务设计</h1><p>消息服务是直播产品中一个非常核心的服务。直播间内的聊天、弹幕、礼物等消息，都是通过消息服务发送。</p>
+<h2 id="题目-2"><a href="#题目-2" class="headerlink" title="题目"></a>题目</h2><p>设计一个消息服务，支持直播间内的用户进行聊天、发弹幕等操作。</p>
+<ul>
+<li>衡量一个消息服务的核心指标有哪些？</li>
+<li>基于候选者的方案，如何监控和优化这些核心指标？</li>
+<li>（深入）拉模型的分布式方案</li>
+</ul>
+<h2 id="答案-2"><a href="#答案-2" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>方案设计</li>
+</ol>
+<ul>
+<li>主流的设计主要有两种：推模型和拉模型。（任何一种都是合适的设计） 推模型简述： 基于长连接，直播间内的观众发的消息，异步通过长连接发送给房间内的其他观众。候选人的架构图应该没有硬伤。 深入的问题（言之有理即可）：</li>
+<li>长连接的架构（协议、鉴权、扩容、重连、到达率等）</li>
+<li>消息放大问题如何解决（比如一个有 1 万人的房间，任何一个人发的消息，都会产生 1 万个消息，相当于放大了 1 万倍） 消息聚合、消息多级推送（类似 CDN 的方式）</li>
+<li>直播间用户列表怎么存储和优化 推送消息时，需要房间内所有用户消息，对于观众比较多的房间，需要考虑数据分片、本地缓存等手段进行优化。 拉模型简述： 拉模型类型类似于一个消息队列的模型。每个房间会有一个消息列表，直播间内用户发的消息会放在相应的消息列表中。直播间内的观众通过前端轮询拉消息接口， 把消息拉到客户端展示。 深入的问题（言之有理即可）：</li>
+<li>房间的消息如何存储（由于消息有时效性，所以只需要存储最近一段时间的数据）</li>
+<li>轮询方式如何优化</li>
+<li>拉接口如何优化（local cache 等）</li>
+</ul>
+<ol start="2">
+<li>核心指标</li>
+</ol>
+<ul>
+<li>消息每秒吞吐量、消息到达率、消息延时（像稳定性这种，属于通用的基本指标）。</li>
+<li>核心的优化方式（提供一些方式，其它的只要合理即可）：</li>
+</ul>
+<ol start="3">
+<li>监控方式：</li>
+</ol>
+<ul>
+<li>吞吐量（类似于 qps，打 metrics 等都可以）</li>
+<li>到达率：对于推模型，基本等价于长连接的到达率监控；对于拉模型，性价比较高的是只监控主播的（因为只有主播是全程在直播间的）</li>
+<li>延时：需要关注手机和服务端的时间不一致的问题</li>
+</ul>
+<ol start="4">
+<li>优化：</li>
+</ol>
+<ul>
+<li>吞吐量：批量发送、多级推送等</li>
+<li>到达率：一般推模型需要重点关注，主要是对于长连接的到达率优化，包含死连接检测等。</li>
+<li>延时：一般拉模型需要重点关注，对于每次都拉到消息的房间，减少轮询间隔和长连接拉模式等。</li>
+</ul>
+<ol start="5">
+<li>拉模型的分布式方案</li>
+</ol>
+<ul>
+<li>类似于一个分布式存储系统，解决水平和垂直扩展的问题。</li>
+</ul>
+<h1 id="秒杀系统设计"><a href="#秒杀系统设计" class="headerlink" title="秒杀系统设计"></a>秒杀系统设计</h1><h2 id="题目-3"><a href="#题目-3" class="headerlink" title="题目"></a>题目</h2><p>“米粉节”3000 万人抢购，峰值 QPS100 万，请设计抢购系统的技术架构，保证可靠性并且不能超卖。<br>设计要点：<br>1 可以支撑 QPS 100 万，能分析系统的瓶颈<br>2 如何尽快把商品卖完，但不能超卖<br>3 考察系统扩展性、容灾能力</p>
+<h2 id="答案-3"><a href="#答案-3" class="headerlink" title="答案"></a>答案</h2><p>设计思路：限流+策略+反作弊，一般情况下候选人想不到完善的设计，我们主要看其设计能否满足前面的需求。<br>1 可以满足业务需求，抗住压力，不会超卖<br>2 能考虑到到各种情况下的灾备方案，系统易于对商品种类，抢购规模进行扩展，</p>
+<h1 id="海量评论系统"><a href="#海量评论系统" class="headerlink" title="海量评论系统"></a>海量评论系统</h1><h2 id="题目-4"><a href="#题目-4" class="headerlink" title="题目"></a>题目</h2><p>如何设计海量评论存储系统，支持快速大量的写入及任意翻页的需求。 </p>
+<ul>
+<li>主要是看候选人对“复杂”业务的分解，在实际存储时是否会通过类似二级索引的方式来优化翻页效率；</li>
+<li>在业务上冷热数据的不同缓存处理；是否会考虑使用缓冲区避免突发流量的写入；</li>
+<li>偶尔会关联问到全局唯一 ID 的设计方案。 </li>
+<li>如果获取评论列表的时候，支持按照一定热度对评论进行排序，又该如何进行设计</li>
+</ul>
+<h2 id="答案-4"><a href="#答案-4" class="headerlink" title="答案"></a>答案</h2><p>评论大量写入优化方案：</p>
+<ol>
+<li>id 分配策略，写入量太多如何进行扩展（自己实现分片策略，或者采用分布式存储系统，如果选用分布式系统介绍选型方案和实现细节）；</li>
+<li>查询方面如果按照时间逆序，索引可以采用 zset 方式，但需要考虑单个文章评论索引太多问题，故可以采用自建索引或者利用 redis 等拆分索引大小；其次需要考虑评论被删除后，索引中大片数据无法使用情况，采用重建索引还是单独提供删除索引？</li>
+<li>头条环境下对评论做了个性化排序，索引的机制如何进行调整；（加分项目）</li>
+<li>容错机制考虑；（加分项目）</li>
+</ol>
+<h1 id="推送去重系统设计"><a href="#推送去重系统设计" class="headerlink" title="推送去重系统设计"></a>推送去重系统设计</h1><h2 id="题目-5"><a href="#题目-5" class="headerlink" title="题目"></a>题目</h2><p>推送系统去重模块设计：头条有几亿的活跃设备数，运营日常推送时，会针对同一篇新闻进行多维度推送，比如先推送一次北京用户，再补推一次时政用户，再推一次全国用户。同一个用户可能会被匹配到多次，要如何避免用户收到重复的推送。</p>
+<h2 id="答案-5"><a href="#答案-5" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>去重必定会有状态，所以该系统设计的核心在于“状态”数据的存储，特点就是数据量大，去重要求精确。</li>
+<li>常规的思路是用分布式 KV 存储（Redis、Memcache 等），去重模块本身无状态。基本合格。</li>
+<li>考虑本地 Redis 或 Memcache 方案，去重模块按用户分片。</li>
+<li>能根据状态数据的特性，考虑自己实现存储，并且实现半持久化（程序重启数据不丢），内存+磁盘存储可满足需求，根据面试者存储数据的选择和持久方式的解答。</li>
+<li>基于共享内存（或类似的磁盘文件映射 mmap 等方式），并且能较好的给出基于块存储实现 Hash 的表，以及 Hash 表的增加和查询。因为数据量大，存储需要考虑很多优化方案，基于 bit 的操作等。</li>
+<li>在 4 的基础上，考虑到数据数据清除（以天为单位清除）。考虑 Android 设备可以自己掌握弹窗的，在端上做保底去重。</li>
+</ol>
+<h1 id="类似微博-timeline-功能实现，考虑怎么设计支持「热门」"><a href="#类似微博-timeline-功能实现，考虑怎么设计支持「热门」" class="headerlink" title="类似微博 timeline 功能实现，考虑怎么设计支持「热门」"></a>类似微博 timeline 功能实现，考虑怎么设计支持「热门」</h1><h2 id="题目-6"><a href="#题目-6" class="headerlink" title="题目"></a>题目</h2><p>设计类似微博 timeline 功能，好友发表了最新的微博之后，能够在自己的 feed 流中按照时间顺序获取到最新的微博，也能通过加载更多功能获取之前历史中的微博数据。 如果考虑支持按照热度对好友微博进行排序展现，热度主要根据用户阅读，评论和点赞数据评估，该系统该如何扩展。</p>
+<h2 id="答案-6"><a href="#答案-6" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>写入系统：设计写入服务，帖子 id 分配策略（采用全局分配器），如何解决 qps 突增等情况，写入 qps 较高时，通过分片等方式提升写入效率，当然目前也可以采用写入效率较高的分布式存储系统；</li>
+<li>索引构建：由于要支持 timeline 或者其他的排序方式，故需要单独的排序策略，这里单独针对 timeline 排序详细说明，timeline 按照发表者时间顺序，一般有 3 中处理方案：</li>
+</ol>
+<ul>
+<li>拉的方式，按照发布者建立时间索引，需要考虑关注人数较多时，获取索引效率问题；</li>
+<li>推模式：发布的时通过异步消息队列，将消息投递到各个阅读者，此处主要问题推的效率和存储空间的开销；</li>
+<li>混合模式：粉丝较多用户采用拉模式，在线用户直接投递等提高查询效率；<br>2 中需要考虑索引数据结构设计，排序 cursor 值选取问题；<br>如果是热点排序：全局热点比较简单，可以直接维护一个热度计算模块，接入热度事件计算流，如果事件较多，则可以使用分布式实时计算框架提高计算效率，对于热度超过一定阈值的进入到热度排序系统中，按照从高到底排序即可（热度排序系统按照一定量截断多余数据）；如果热度支持不同时间段分别组织；其次如果按照话题拆分呢？又如何设置热度排序系统？</li>
+</ul>
+<h1 id="分布式-cache-系统设计"><a href="#分布式-cache-系统设计" class="headerlink" title="分布式 cache 系统设计"></a>分布式 cache 系统设计</h1><h2 id="题目-7"><a href="#题目-7" class="headerlink" title="题目"></a>题目</h2><p>工业环境中对数据查询访问效率比较大，但数据量有比较大，单机 cache 无法满足业务需求，故需要实现一个分布式 cache 系统，满足业务查询效率和数据量要求，请设计这样一个系统</p>
+<h2 id="答案-7"><a href="#答案-7" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>基础数据结构采用 hash 或者 map 的方式均可以；</li>
+<li>考虑线程安全性，同时兼顾查询效率，是否考虑分桶等机制</li>
+<li>分布式环境下：主要考察分片方案，如何做到使用者透明，怎么解决某一个节点故障问题，雪崩问题；</li>
+</ol>
+<h1 id="12306-系统售票系统设计"><a href="#12306-系统售票系统设计" class="headerlink" title="12306 系统售票系统设计"></a>12306 系统售票系统设计</h1><h2 id="题目-8"><a href="#题目-8" class="headerlink" title="题目"></a>题目</h2><p>设计 12306 系统的售票模型，实现查询余票和购票的功能。在春运中采用什么样的架构支撑。</p>
+<h2 id="答案-8"><a href="#答案-8" class="headerlink" title="答案"></a>答案</h2><p>业务模型：<br>有多种解法，每种有各自优缺点：<br>1 记录任意两个车站的余票数量，需要维护 Cn2 共 105 个车站对的余票信息。该方案查询效率非常高，更新时有放大效应，需要更新多个车站对的余票信息。<br>2 记录每一张席位的售卖记录，查询时遍历每个席位，算出余票信息。该方案更新效率较高，查询时需要遍历。<br>3 将全程分解为原子区间，记录每个区间的可用车票数目。购买时只要起始站和终点站之间的原子区间有票，那可以出一张票。该方案查询和更新效率都很高，但不能保证买到的是同一个席位。更适合用来模糊查询。<br>在不考虑性能的情况下，方案可以满足查询和购买的基本需求，<br>性能上满足要求，并给出准确的分析<br>架构：<br>1 技术选型可以实现需求，对技术栈性能和特性都比较清楚<br>2 能够对系统瓶颈做出分析，设计比较系统的容灾方案</p>
+<h1 id="分布式定时任务管理"><a href="#分布式定时任务管理" class="headerlink" title="分布式定时任务管理"></a>分布式定时任务管理</h1><h2 id="题目-9"><a href="#题目-9" class="headerlink" title="题目"></a>题目</h2><p>设计一个分布式定时任务管理系统，按照业务需求，解决任务管理和资源分配问题</p>
+<h2 id="答案-9"><a href="#答案-9" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>任务提交管理</li>
+<li>定时器；</li>
+<li>分布式的任务调度；</li>
+<li>失败容错机制</li>
+</ol>
+<h1 id="多人协同文档应用项目"><a href="#多人协同文档应用项目" class="headerlink" title="多人协同文档应用项目"></a>多人协同文档应用项目</h1><h2 id="题目-10"><a href="#题目-10" class="headerlink" title="题目"></a>题目</h2><p>设计一个多人协作（可同时修改）的文档应用，尽量满足以下需求： </p>
+<ul>
+<li>多个人可以同时编辑同一份在线文档，尽量做到一个人编辑时不会影响其他人的编辑；</li>
+<li>文档的修改应尽可能实时地反映在编辑者的界面上，例如 A 增加了一行，那么 B 应该能在较短时间内看到这个变更；</li>
+<li>尽可能减少客户端与后端的数据传输量，并尽可能提高后端处理时的响应速度； 4.编辑的内容应可能做到不丢失，即自动保存功能<br>请大致说说： 如果让你设计，那么后端架构、存储是怎么样的？客户端的产品逻辑是怎么样的（什么时候保存，有编辑时往服务端发送什么内容，如何获取到对方的修改内容等）</li>
+</ul>
+<h2 id="答案-10"><a href="#答案-10" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>能够想到类似 diff 工具，出现同一行冲突时由用户来解决，这样能避免自动合并有可能出错等情况。</li>
+<li>采用长连接方式传递修改的 diff， 服务端转换之后传递 diff 到客户端。</li>
+<li>针对统一文档的的所有用户 hash 到同一台机器。</li>
+<li>能够采用 Myer’s diff / Operational Transformation 等算法。</li>
+<li>传递 diff， 如果有多机处理统一文档的需求，需要保证操作的一致性。</li>
+</ol>
+<h1 id="文件分发系统设计"><a href="#文件分发系统设计" class="headerlink" title="文件分发系统设计"></a>文件分发系统设计</h1><h2 id="题目-11"><a href="#题目-11" class="headerlink" title="题目"></a>题目</h2><p>用户不断把文件上传到服务器上 需要设计一个文件分发系统，把这些文件分发到服务器集群上（规模 100-10000 级别）<br>要求：速度更快，可靠性更高</p>
+<h2 id="答案-11"><a href="#答案-11" class="headerlink" title="答案"></a>答案</h2><p>1 最基本解法，需要考虑分级分发，且有基本的容错性考虑（重试，校验之类的，针对网络故障服务器宕机等常见场景的策略）<br>2 可考虑 p2p 的方式，进一步的可通过优化 p2p 分发策略来提升效率<br>3 考虑系统单点消除，横向扩展，可维护性提升，监控，追查问题效率等要素</p>
+<h1 id="客户端配置系统设计"><a href="#客户端配置系统设计" class="headerlink" title="客户端配置系统设计"></a>客户端配置系统设计</h1><h2 id="题目-12"><a href="#题目-12" class="headerlink" title="题目"></a>题目</h2><p>头条 app 客户端做了比较多 feature，为了对这些功能做评估或者动态控制，需要支持云控 ab 测试方案，故需要设计一个在线动态配置管理系统设计，该系统要求能比较便捷进行参数动态修改和 ab 测试，请设计该系统满足该需求，需要考虑动态配置项比较多和易用性。</p>
+<h2 id="答案-12"><a href="#答案-12" class="headerlink" title="答案"></a>答案</h2><ol>
+<li>能清楚的画出整个架构图，基于 MySQL 做存储，有可视化操作后台直接操作 MySQL，API 层解析 MySQL 数据下发数据。</li>
+<li>API 层请求量会很大，考虑到请求 MySQL 时需要做缓存并给合理的缓存方案（本地缓存即可）。</li>
+<li>配置需求各式各样，如何抽象配置是该系统的关键。和 Lua 或 Python 等脚本语言来描述配置比较合适。</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/场景设计/" rel="tag"># 场景设计</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2023/04/23/浏览器简易实现/" rel="next" title="实现一个简单的浏览器">
+                <i class="fa fa-chevron-left"></i> 实现一个简单的浏览器
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">21</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">33</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#短网址系统设计"><span class="nav-number">2.</span> <span class="nav-text">短网址系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目"><span class="nav-number">2.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案"><span class="nav-number">2.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#计数系统设计"><span class="nav-number">3.</span> <span class="nav-text">计数系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-1"><span class="nav-number">3.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-1"><span class="nav-number">3.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#直播消息服务设计"><span class="nav-number">4.</span> <span class="nav-text">直播消息服务设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-2"><span class="nav-number">4.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-2"><span class="nav-number">4.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#秒杀系统设计"><span class="nav-number">5.</span> <span class="nav-text">秒杀系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-3"><span class="nav-number">5.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-3"><span class="nav-number">5.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#海量评论系统"><span class="nav-number">6.</span> <span class="nav-text">海量评论系统</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-4"><span class="nav-number">6.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-4"><span class="nav-number">6.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#推送去重系统设计"><span class="nav-number">7.</span> <span class="nav-text">推送去重系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-5"><span class="nav-number">7.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-5"><span class="nav-number">7.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#类似微博-timeline-功能实现，考虑怎么设计支持「热门」"><span class="nav-number">8.</span> <span class="nav-text">类似微博 timeline 功能实现，考虑怎么设计支持「热门」</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-6"><span class="nav-number">8.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-6"><span class="nav-number">8.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#分布式-cache-系统设计"><span class="nav-number">9.</span> <span class="nav-text">分布式 cache 系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-7"><span class="nav-number">9.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-7"><span class="nav-number">9.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#12306-系统售票系统设计"><span class="nav-number">10.</span> <span class="nav-text">12306 系统售票系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-8"><span class="nav-number">10.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-8"><span class="nav-number">10.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#分布式定时任务管理"><span class="nav-number">11.</span> <span class="nav-text">分布式定时任务管理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-9"><span class="nav-number">11.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-9"><span class="nav-number">11.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#多人协同文档应用项目"><span class="nav-number">12.</span> <span class="nav-text">多人协同文档应用项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-10"><span class="nav-number">12.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-10"><span class="nav-number">12.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#文件分发系统设计"><span class="nav-number">13.</span> <span class="nav-text">文件分发系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-11"><span class="nav-number">13.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-11"><span class="nav-number">13.2.</span> <span class="nav-text">答案</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#客户端配置系统设计"><span class="nav-number">14.</span> <span class="nav-text">客户端配置系统设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#题目-12"><span class="nav-number">14.1.</span> <span class="nav-text">题目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#答案-12"><span class="nav-number">14.2.</span> <span class="nav-text">答案</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
