@@ -1,6 +1,6 @@
 ---
 title: 编译原理实战——实现一个简单的js引擎
-date: 2022-05-17 16:36:40
+date: 2023-11-12 03:36:40
 tags:
   - javascript engine
   - rust
