@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言网上没有找到 Rolldown 的源码阅读，所以就自己简单看一看，串一下逻辑，总结成笔记。 入口Rolldown 的入口位于 packages/rolldown/src/index.ts 中，核心就是创建一个 RolldownBuild js 对象，在内部绑定好对应的 bundler ： 12345678910111213141516171819202122232425262728293031">
+<meta name="keywords" content="rust,rolldown">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Rolldown源码学习">
+<meta property="og:url" content="https://akitaSummer.github.io/2024/03/30/Rolldown源码学习/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="前言网上没有找到 Rolldown 的源码阅读，所以就自己简单看一看，串一下逻辑，总结成笔记。 入口Rolldown 的入口位于 packages/rolldown/src/index.ts 中，核心就是创建一个 RolldownBuild js 对象，在内部绑定好对应的 bundler ： 12345678910111213141516171819202122232425262728293031">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2024-04-06T15:40:56.459Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rolldown源码学习">
+<meta name="twitter:description" content="前言网上没有找到 Rolldown 的源码阅读，所以就自己简单看一看，串一下逻辑，总结成笔记。 入口Rolldown 的入口位于 packages/rolldown/src/index.ts 中，核心就是创建一个 RolldownBuild js 对象，在内部绑定好对应的 bundler ： 12345678910111213141516171819202122232425262728293031">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2024/03/30/Rolldown源码学习/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Rolldown源码学习 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2024/03/30/Rolldown源码学习/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Rolldown源码学习
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2024-03-30 16:32:40" itemprop="dateCreated datePublished" datetime="2024-03-30T16:32:40+08:00">2024-03-30</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2024-04-06 23:40:56" itemprop="dateModified" datetime="2024-04-06T23:40:56+08:00">2024-04-06</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2024/03/30/Rolldown源码学习/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2024/03/30/Rolldown源码学习/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>网上没有找到 Rolldown 的源码阅读，所以就自己简单看一看，串一下逻辑，总结成笔记。</p>
+<h1 id="入口"><a href="#入口" class="headerlink" title="入口"></a>入口</h1><p>Rolldown 的入口位于 <code>packages/rolldown/src/index.ts</code> 中，核心就是创建一个 <code>RolldownBuild</code> js 对象，在内部绑定好对应的 bundler ：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> rolldown = <span class="keyword">async</span> (input: InputOptions): <span class="built_in">Promise</span>&lt;RolldownBuild&gt; =&gt; &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">new</span> RolldownBuild(input)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="class"><span class="keyword">class</span> <span class="title">RolldownBuild</span> </span>&#123;</span><br><span class="line">  #inputOptions: InputOptions</span><br><span class="line">  #bundler?: Bundler</span><br><span class="line"></span><br><span class="line">  <span class="keyword">constructor</span>(inputOptions: InputOptions) &#123;</span><br><span class="line">    <span class="comment">// <span class="doctag">TODO:</span> Check if `inputOptions.output` is set. If so, throw an warning that it is ignored.</span></span><br><span class="line">    this.#inputOptions = inputOptions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  async #getBundler(outputOptions: OutputOptions): Promise&lt;Bundler&gt; &#123;</span><br><span class="line">    if (typeof this.#bundler === 'undefined') &#123;</span><br><span class="line">      this.#bundler = await createBundler(this.#inputOptions, outputOptions)</span><br><span class="line">    &#125;</span><br><span class="line">    return this.#bundler</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> generate(outputOptions: OutputOptions = &#123;&#125;): <span class="built_in">Promise</span>&lt;RolldownOutput&gt; &#123;</span><br><span class="line">    const bundler = await this.#getBundler(outputOptions)</span><br><span class="line">    <span class="keyword">const</span> output = <span class="keyword">await</span> bundler.generate()</span><br><span class="line">    <span class="keyword">return</span> transformToRollupOutput(output)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> write(outputOptions: OutputOptions = &#123;&#125;): <span class="built_in">Promise</span>&lt;RolldownOutput&gt; &#123;</span><br><span class="line">    const bundler = await this.#getBundler(outputOptions)</span><br><span class="line">    <span class="keyword">const</span> output = <span class="keyword">await</span> bundler.write()</span><br><span class="line">    <span class="keyword">return</span> transformToRollupOutput(output)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>其中 Bundler 是 napi 的产物，接下来就会进入 rust 的代码中 <code>crates/rolldown_binding/src/bundler.rs</code> 调用的是对应的 impl</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#[instrument(skip_all)]</span></span><br><span class="line"><span class="meta">#[allow(clippy::significant_drop_tightening)]</span></span><br><span class="line"><span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">write_impl</span></span>(&amp;<span class="keyword">self</span>) -&gt; napi::<span class="built_in">Result</span>&lt;BindingOutputs&gt; &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> bundler_core = <span class="keyword">self</span>.inner.try_lock().map_err(|_| &#123;</span><br><span class="line">    napi::Error::from_reason(<span class="string">"Failed to lock the bundler. Is another operation in progress?"</span>)</span><br><span class="line">  &#125;)?;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Bundler 的 write</span></span><br><span class="line">  <span class="keyword">let</span> maybe_outputs = bundler_core.write().await;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> outputs = <span class="keyword">match</span> maybe_outputs &#123;</span><br><span class="line">    <span class="literal">Ok</span>(outputs) =&gt; outputs,</span><br><span class="line">    <span class="literal">Err</span>(errs) =&gt; <span class="keyword">return</span> <span class="literal">Err</span>(Self::handle_errors(errs)),</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  Self::handle_warnings(outputs.warnings);</span><br><span class="line"></span><br><span class="line">  <span class="literal">Ok</span>(outputs.assets.into())</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[instrument(skip_all)]</span></span><br><span class="line"><span class="meta">#[allow(clippy::significant_drop_tightening)]</span></span><br><span class="line"><span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">generate_impl</span></span>(&amp;<span class="keyword">self</span>) -&gt; napi::<span class="built_in">Result</span>&lt;BindingOutputs&gt; &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> bundler_core = <span class="keyword">self</span>.inner.try_lock().map_err(|_| &#123;</span><br><span class="line">    napi::Error::from_reason(<span class="string">"Failed to lock the bundler. Is another operation in progress?"</span>)</span><br><span class="line">  &#125;)?;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Bundler 的 generate</span></span><br><span class="line">  <span class="keyword">let</span> maybe_outputs = bundler_core.generate().await;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> outputs = <span class="keyword">match</span> maybe_outputs &#123;</span><br><span class="line">    <span class="literal">Ok</span>(outputs) =&gt; outputs,</span><br><span class="line">    <span class="literal">Err</span>(errs) =&gt; <span class="keyword">return</span> <span class="literal">Err</span>(Self::handle_errors(errs)),</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  Self::handle_warnings(outputs.warnings);</span><br><span class="line"></span><br><span class="line">  <span class="literal">Ok</span>(outputs.assets.into())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后就可以找到核心的 Bundler 的位置位于 <code>crates/rolldown/src/bundler.rs</code> 中了。</p>
+<h1 id="Build-总览"><a href="#Build-总览" class="headerlink" title="Build 总览"></a>Build 总览</h1><p>通过上文的 js 代码可以看出，核心就是 generate 和 write 两个方法，而源码中的 write 是在跟 generate 一样在调用 bundle_up 后，将产物直接写入本地，可见 bundle_up 方法是核心：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">impl</span> Bundler &#123;</span><br><span class="line">  <span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">write</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; BatchedResult&lt;RolldownOutput&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> dir =</span><br><span class="line">      <span class="keyword">self</span>.input_options.cwd.as_path().join(&amp;<span class="keyword">self</span>.output_options.dir).to_string_lossy().to_string();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 获取 generate 结果</span></span><br><span class="line">    <span class="keyword">let</span> output = <span class="keyword">self</span>.bundle_up(<span class="literal">true</span>).await?;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">self</span>.plugin_driver.write_bundle(&amp;output.assets).await?;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">self</span>.fs.create_dir_all(dir.as_path()).unwrap_or_else(|_| &#123;</span><br><span class="line">      <span class="built_in">panic!</span>(</span><br><span class="line">        <span class="string">"Could not create directory for output chunks: &#123;:?&#125; \ncwd: &#123;&#125;"</span>,</span><br><span class="line">        dir.as_path(),</span><br><span class="line">        <span class="keyword">self</span>.input_options.cwd.display()</span><br><span class="line">      )</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="comment">// 写文件</span></span><br><span class="line">    <span class="keyword">for</span> chunk <span class="keyword">in</span> &amp;output.assets &#123;</span><br><span class="line">      <span class="keyword">let</span> dest = dir.as_path().join(chunk.file_name());</span><br><span class="line">      <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(p) = dest.parent() &#123;</span><br><span class="line">        <span class="keyword">if</span> !<span class="keyword">self</span>.fs.exists(p) &#123;</span><br><span class="line">          <span class="keyword">self</span>.fs.create_dir_all(p).unwrap();</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;;</span><br><span class="line">      <span class="keyword">self</span>.fs.write(dest.as_path(), chunk.content().as_bytes()).unwrap_or_else(|_| &#123;</span><br><span class="line">        <span class="built_in">panic!</span>(<span class="string">"Failed to write file in &#123;:?&#125;"</span>, dir.as_path().join(chunk.file_name()))</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="literal">Ok</span>(output)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">generate</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; BatchedResult&lt;RolldownOutput&gt; &#123;</span><br><span class="line">    <span class="keyword">self</span>.bundle_up(<span class="literal">false</span>).await</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>bundle_up 除了 plugin hooks 执行以外，只做了 try_build 和  bundle_stage.bundle 两个事情，接下来主要查看两个函数：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">async <span class="function"><span class="keyword">fn</span> <span class="title">bundle_up</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, is_write: <span class="built_in">bool</span>) -&gt; BatchedResult&lt;RolldownOutput&gt; &#123;</span><br><span class="line">  tracing::trace!(<span class="string">"InputOptions &#123;:#?&#125;"</span>, <span class="keyword">self</span>.input_options);</span><br><span class="line">  tracing::trace!(<span class="string">"OutputOptions: &#123;:#?&#125;"</span>, <span class="keyword">self</span>.output_options);</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> link_stage_output = <span class="keyword">self</span>.try_build().await?;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> bundle_stage = BundleStage::new(</span><br><span class="line">    &amp;<span class="keyword">mut</span> link_stage_output,</span><br><span class="line">    &amp;<span class="keyword">self</span>.input_options,</span><br><span class="line">    &amp;<span class="keyword">self</span>.output_options,</span><br><span class="line">    &amp;<span class="keyword">self</span>.plugin_driver,</span><br><span class="line">  );</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> assets = bundle_stage.bundle().await?;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">self</span>.plugin_driver.generate_bundle(&amp;assets, is_write).await?;</span><br><span class="line"></span><br><span class="line">  <span class="literal">Ok</span>(RolldownOutput &#123; warnings: std::mem::take(&amp;<span class="keyword">mut</span> link_stage_output.warnings), assets &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="try-build"><a href="#try-build" class="headerlink" title="try_build"></a>try_build</h1><p>try_build 做了扫描所有文件，和对他们进行了关联</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">async <span class="function"><span class="keyword">fn</span> <span class="title">try_build</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; BatchedResult&lt;LinkStageOutput&gt; &#123;</span><br><span class="line">  <span class="keyword">self</span>.plugin_driver.build_start().await?;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 扫描</span></span><br><span class="line">  <span class="keyword">let</span> scan_ret = <span class="keyword">self</span>.scan_inner().await;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">self</span>.call_build_end_hook(&amp;scan_ret).await?;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> build_info = scan_ret?;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对扫描结果进行关联</span></span><br><span class="line">  <span class="keyword">let</span> link_stage = LinkStage::new(build_info, &amp;<span class="keyword">self</span>.input_options);</span><br><span class="line">  <span class="literal">Ok</span>(link_stage.link())</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">async <span class="function"><span class="keyword">fn</span> <span class="title">scan_inner</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; BatchedResult&lt;ScanStageOutput&gt; &#123;</span><br><span class="line">  ScanStage::new(</span><br><span class="line">    Arc::clone(&amp;<span class="keyword">self</span>.input_options),</span><br><span class="line">    Arc::clone(&amp;<span class="keyword">self</span>.plugin_driver),</span><br><span class="line">    <span class="keyword">self</span>.fs.clone(),</span><br><span class="line">    Arc::clone(&amp;<span class="keyword">self</span>.resolver),</span><br><span class="line">  )</span><br><span class="line">  .scan()</span><br><span class="line">  .await</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>扫描的整体逻辑如下：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">scan</span></span>(&amp;<span class="keyword">self</span>) -&gt; BatchedResult&lt;ScanStageOutput&gt; &#123;</span><br><span class="line">  tracing::info!(<span class="string">"Start scan stage"</span>);</span><br><span class="line">  <span class="built_in">assert!</span>(!<span class="keyword">self</span>.input_options.input.is_empty(), <span class="string">"You must supply options.input to rolldown"</span>);</span><br><span class="line">  <span class="comment">// 创建 ModuleLoader</span></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> module_loader = ModuleLoader::new(</span><br><span class="line">    Arc::clone(&amp;<span class="keyword">self</span>.input_options),</span><br><span class="line">    Arc::clone(&amp;<span class="keyword">self</span>.plugin_driver),</span><br><span class="line">    <span class="keyword">self</span>.fs.clone(),</span><br><span class="line">    Arc::clone(&amp;<span class="keyword">self</span>.resolver),</span><br><span class="line">  );</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 创建 rolldown 默认 runtime 的打包任务</span></span><br><span class="line">  module_loader.try_spawn_runtime_module_task();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 获取用户的所有 entry</span></span><br><span class="line">  <span class="keyword">let</span> user_entries = <span class="keyword">self</span>.resolve_user_defined_entries()?;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 递归拿到所有 entry 关联的 module</span></span><br><span class="line">  <span class="keyword">let</span> ModuleLoaderOutput &#123; module_table, entry_points, symbols, runtime, warnings, ast_table &#125; =</span><br><span class="line">    module_loader.fetch_all_modules(user_entries).await?;</span><br><span class="line"></span><br><span class="line">  tracing::debug!(<span class="string">"Scan stage finished &#123;module_table:#?&#125;"</span>);</span><br><span class="line"></span><br><span class="line">  <span class="literal">Ok</span>(ScanStageOutput &#123; module_table, entry_points, symbols, runtime, warnings, ast_table &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>其中创建 <code>ModuleLoader</code> 的时候，其中包含了一个 mpsc ，因为 rolldown 使用 tokio 将所有文件的扫描变成异步任务，这个 mpsc 主要是用于接收任务结果：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">new</span></span>(</span><br><span class="line">  input_options: SharedNormalizedInputOptions,</span><br><span class="line">  plugin_driver: SharedPluginDriver,</span><br><span class="line">  fs: OsFileSystem,</span><br><span class="line">  resolver: SharedResolver,</span><br><span class="line">) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">  <span class="keyword">let</span> (tx, rx) = tokio::sync::mpsc::unbounded_channel::&lt;Msg&gt;();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> common_data = ModuleTaskCommonData &#123;</span><br><span class="line">    input_options: Arc::clone(&amp;input_options),</span><br><span class="line">    tx,</span><br><span class="line">    resolver,</span><br><span class="line">    fs,</span><br><span class="line">    plugin_driver,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">Self</span> &#123;</span><br><span class="line">    common_data,</span><br><span class="line">    rx,</span><br><span class="line">    input_options,</span><br><span class="line">    visited: FxHashMap::<span class="keyword">default</span>(),</span><br><span class="line">    runtime_id: <span class="literal">None</span>,</span><br><span class="line">    remaining: <span class="number">0</span>,</span><br><span class="line">    intermediate_normal_modules: IntermediateNormalModules::new(),</span><br><span class="line">    external_modules: IndexVec::new(),</span><br><span class="line">    symbols: Symbols::<span class="keyword">default</span>(),</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>try_spawn_runtime_module_task</code> 方法是将默认的 runtime 作为一个打包任务放入执行列队</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">try_spawn_runtime_module_task</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; NormalModuleId &#123;</span><br><span class="line">  *<span class="keyword">self</span>.runtime_id.get_or_insert_with(|| &#123;</span><br><span class="line">    <span class="keyword">let</span> id = <span class="keyword">self</span>.intermediate_normal_modules.alloc_module_id(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>.symbols);</span><br><span class="line">    <span class="keyword">self</span>.remaining += <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> task = RuntimeNormalModuleTask::new(id, <span class="keyword">self</span>.common_data.tx.clone());</span><br><span class="line">    tokio::spawn(async <span class="keyword">move</span> &#123; task.run() &#125;);</span><br><span class="line">    id</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">run</span></span>(<span class="keyword">self</span>) &#123;</span><br><span class="line">  tracing::trace!(<span class="string">"process &lt;runtime&gt;"</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> builder = NormalModuleBuilder::<span class="keyword">default</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 默认 runtime 位置</span></span><br><span class="line">  <span class="keyword">let</span> source: Arc&lt;<span class="built_in">str</span>&gt; =</span><br><span class="line">    <span class="built_in">include_str!</span>(<span class="string">"../runtime/runtime-without-comments.js"</span>).to_string().into();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 生成 ast</span></span><br><span class="line">  <span class="keyword">let</span> (ast, scope, scan_result, symbol, namespace_symbol) = <span class="keyword">self</span>.make_ast(&amp;source);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> runtime = RuntimeModuleBrief::new(<span class="keyword">self</span>.module_id, &amp;scope);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 构建扫描结果</span></span><br><span class="line">  <span class="keyword">let</span> ScanResult &#123;</span><br><span class="line">    named_imports,</span><br><span class="line">    named_exports,</span><br><span class="line">    stmt_infos,</span><br><span class="line">    star_exports,</span><br><span class="line">    default_export_ref,</span><br><span class="line">    imports,</span><br><span class="line">    repr_name,</span><br><span class="line">    import_records: _,</span><br><span class="line">    exports_kind: _,</span><br><span class="line">    warnings: _,</span><br><span class="line">  &#125; = scan_result;</span><br><span class="line"></span><br><span class="line">  builder.source = <span class="literal">Some</span>(source);</span><br><span class="line">  builder.id = <span class="literal">Some</span>(<span class="keyword">self</span>.module_id);</span><br><span class="line">  builder.repr_name = <span class="literal">Some</span>(repr_name);</span><br><span class="line">  <span class="comment">// <span class="doctag">TODO:</span> Runtime module should not have FilePath as source id</span></span><br><span class="line">  builder.path = <span class="literal">Some</span>(ResourceId::new(<span class="string">"runtime"</span>.to_string().into()));</span><br><span class="line">  builder.named_imports = <span class="literal">Some</span>(named_imports);</span><br><span class="line">  builder.named_exports = <span class="literal">Some</span>(named_exports);</span><br><span class="line">  builder.stmt_infos = <span class="literal">Some</span>(stmt_infos);</span><br><span class="line">  builder.imports = <span class="literal">Some</span>(imports);</span><br><span class="line">  builder.star_exports = <span class="literal">Some</span>(star_exports);</span><br><span class="line">  builder.default_export_ref = <span class="literal">Some</span>(default_export_ref.expect(<span class="string">"should exist"</span>));</span><br><span class="line">  builder.import_records = <span class="literal">Some</span>(IndexVec::<span class="keyword">default</span>());</span><br><span class="line">  builder.scope = <span class="literal">Some</span>(scope);</span><br><span class="line">  builder.exports_kind = <span class="literal">Some</span>(ExportsKind::Esm);</span><br><span class="line">  builder.namespace_symbol = <span class="literal">Some</span>(namespace_symbol);</span><br><span class="line">  builder.pretty_path = <span class="literal">Some</span>(<span class="string">"&lt;runtime&gt;"</span>.to_string());</span><br><span class="line">  builder.is_user_defined_entry = <span class="literal">Some</span>(<span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 将结果传递给 ModuleLoader</span></span><br><span class="line">  <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Err</span>(_err) = <span class="keyword">self</span>.tx.send(Msg::RuntimeNormalModuleDone(RuntimeNormalModuleTaskResult &#123;</span><br><span class="line">    warnings: <span class="keyword">self</span>.warnings,</span><br><span class="line">    ast_symbol: symbol,</span><br><span class="line">    builder,</span><br><span class="line">    runtime,</span><br><span class="line">    ast,</span><br><span class="line">  &#125;)) &#123;</span><br><span class="line">    <span class="comment">// hyf0: If main thread is dead, we should handle errors of main thread. So we just ignore the error here.</span></span><br><span class="line">  &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接下来就是扫描用户的所有 entry 方法 <code>fetch_all_modules</code>， 他会创建两个 table 保存 modules 和 ast，然后遍历 entry ，为每个 entry 创建一个扫描 task，最后 while mpsc，直到全部文件扫描完毕</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br></pre></td><td class="code"><pre><span class="line">  <span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">fetch_all_modules</span></span>(</span><br><span class="line">    <span class="keyword">mut</span> <span class="keyword">self</span>,</span><br><span class="line">    user_defined_entries: <span class="built_in">Vec</span>&lt;(<span class="built_in">Option</span>&lt;<span class="built_in">String</span>&gt;, ResolvedRequestInfo)&gt;,</span><br><span class="line">  ) -&gt; BatchedResult&lt;ModuleLoaderOutput&gt; &#123;</span><br><span class="line">    <span class="built_in">assert!</span>(!<span class="keyword">self</span>.input_options.input.is_empty(), <span class="string">"You must supply options.input to rolldown"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> errors = BatchedErrors::<span class="keyword">default</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> all_warnings: <span class="built_in">Vec</span>&lt;BuildError&gt; = <span class="built_in">Vec</span>::new();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">self</span></span><br><span class="line">      .intermediate_normal_modules</span><br><span class="line">      .modules</span><br><span class="line">      .reserve(user_defined_entries.len() + <span class="number">1</span> <span class="comment">/* runtime */</span>);</span><br><span class="line">    <span class="keyword">self</span></span><br><span class="line">      .intermediate_normal_modules</span><br><span class="line">      .ast_table</span><br><span class="line">      .reserve(user_defined_entries.len() + <span class="number">1</span> <span class="comment">/* runtime */</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Store the already consider as entry module</span></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> user_defined_entry_ids = &#123;</span><br><span class="line">      <span class="keyword">let</span> <span class="keyword">mut</span> tmp = FxHashSet::<span class="keyword">default</span>();</span><br><span class="line">      tmp.reserve(user_defined_entries.len());</span><br><span class="line">      tmp</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 遍历 entry</span></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> entry_points = user_defined_entries</span><br><span class="line">      .into_iter()</span><br><span class="line">      .map(|(name, info)| EntryPoint &#123;</span><br><span class="line">        name,</span><br><span class="line">        <span class="comment">// 创建扫描任务</span></span><br><span class="line">        id: <span class="keyword">self</span>.try_spawn_new_task(&amp;info).expect_normal(),</span><br><span class="line">        kind: EntryPointKind::UserDefined,</span><br><span class="line">      &#125;)</span><br><span class="line">      .inspect(|e| &#123;</span><br><span class="line">        user_defined_entry_ids.insert(e.id);</span><br><span class="line">      &#125;)</span><br><span class="line">      .collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> dynamic_import_entry_ids = FxHashSet::<span class="keyword">default</span>();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> runtime_brief: <span class="built_in">Option</span>&lt;RuntimeModuleBrief&gt; = <span class="literal">None</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> panic_errors = <span class="built_in">vec!</span>[];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 不断从 channel 中拿取扫描结果</span></span><br><span class="line">    <span class="keyword">while</span> <span class="keyword">self</span>.remaining &gt; <span class="number">0</span> &#123;</span><br><span class="line">      <span class="keyword">let</span> <span class="literal">Some</span>(msg) = <span class="keyword">self</span>.rx.recv().await <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;;</span><br><span class="line">      <span class="keyword">match</span> msg &#123;</span><br><span class="line">        <span class="comment">// 用户文件的结果</span></span><br><span class="line">        Msg::NormalModuleDone(task_result) =&gt; &#123;</span><br><span class="line">          <span class="keyword">let</span> NormalModuleTaskResult &#123;</span><br><span class="line">            module_id,</span><br><span class="line">            ast_symbol,</span><br><span class="line">            resolved_deps,</span><br><span class="line">            <span class="keyword">mut</span> builder,</span><br><span class="line">            raw_import_records,</span><br><span class="line">            warnings,</span><br><span class="line">            ast,</span><br><span class="line">          &#125; = task_result;</span><br><span class="line">          all_warnings.extend(warnings);</span><br><span class="line">          <span class="comment">// 如果有 import * from xxx 则再创建对应的异步任务</span></span><br><span class="line">          <span class="keyword">let</span> import_records = raw_import_records</span><br><span class="line">            .into_iter()</span><br><span class="line">            .zip(resolved_deps)</span><br><span class="line">            .map(|(raw_rec, info)| &#123;</span><br><span class="line">              <span class="keyword">let</span> id = <span class="keyword">self</span>.try_spawn_new_task(&amp;info);</span><br><span class="line">              <span class="comment">// Dynamic imported module will be considered as an entry</span></span><br><span class="line">              <span class="keyword">if</span> <span class="keyword">let</span> ModuleId::Normal(id) = id &#123;</span><br><span class="line">                <span class="keyword">if</span> matches!(raw_rec.kind, ImportKind::DynamicImport)</span><br><span class="line">                  &amp;&amp; !user_defined_entry_ids.contains(&amp;id)</span><br><span class="line">                &#123;</span><br><span class="line">                  dynamic_import_entry_ids.insert(id);</span><br><span class="line">                &#125;</span><br><span class="line">              &#125;</span><br><span class="line">              raw_rec.into_import_record(id)</span><br><span class="line">            &#125;)</span><br><span class="line">            .collect::&lt;IndexVec&lt;ImportRecordId, _&gt;&gt;();</span><br><span class="line">          builder.import_records = <span class="literal">Some</span>(import_records);</span><br><span class="line">          builder.is_user_defined_entry = <span class="literal">Some</span>(user_defined_entry_ids.contains(&amp;module_id));</span><br><span class="line">          <span class="keyword">self</span>.intermediate_normal_modules.modules[module_id] = <span class="literal">Some</span>(builder.build());</span><br><span class="line">          <span class="keyword">self</span>.intermediate_normal_modules.ast_table[module_id] = <span class="literal">Some</span>(ast);</span><br><span class="line"></span><br><span class="line">          <span class="keyword">self</span>.symbols.add_ast_symbol(module_id, ast_symbol);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// runtime 的结果</span></span><br><span class="line">        Msg::RuntimeNormalModuleDone(task_result) =&gt; &#123;</span><br><span class="line">          <span class="keyword">let</span> RuntimeNormalModuleTaskResult &#123; ast_symbol, builder, runtime, warnings: _, ast &#125; =</span><br><span class="line">            task_result;</span><br><span class="line"></span><br><span class="line">          <span class="keyword">self</span>.intermediate_normal_modules.modules[runtime.id()] = <span class="literal">Some</span>(builder.build());</span><br><span class="line">          <span class="keyword">self</span>.intermediate_normal_modules.ast_table[runtime.id()] = <span class="literal">Some</span>(ast);</span><br><span class="line"></span><br><span class="line">          <span class="keyword">self</span>.symbols.add_ast_symbol(runtime.id(), ast_symbol);</span><br><span class="line">          runtime_brief = <span class="literal">Some</span>(runtime);</span><br><span class="line">        &#125;</span><br><span class="line">        Msg::BuildErrors(errs) =&gt; &#123;</span><br><span class="line">          errors.extend(errs);</span><br><span class="line">        &#125;</span><br><span class="line">        Msg::Panics(err) =&gt; &#123;</span><br><span class="line">          panic_errors.push(err);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">self</span>.remaining -= <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">assert!</span>(panic_errors.is_empty(), <span class="string">"Panics occurred during module loading: &#123;panic_errors:?&#125;"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> !errors.is_empty() &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">Err</span>(errors);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> modules: IndexVec&lt;NormalModuleId, NormalModule&gt; =</span><br><span class="line">      <span class="keyword">self</span>.intermediate_normal_modules.modules.into_iter().map(<span class="built_in">Option</span>::unwrap).collect();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> ast_table: IndexVec&lt;NormalModuleId, OxcProgram&gt; =</span><br><span class="line">      <span class="keyword">self</span>.intermediate_normal_modules.ast_table.into_iter().map(<span class="built_in">Option</span>::unwrap).collect();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> dynamic_import_entry_ids = dynamic_import_entry_ids.into_iter().collect::&lt;<span class="built_in">Vec</span>&lt;_&gt;&gt;();</span><br><span class="line">    dynamic_import_entry_ids.sort_by_key(|id| &amp;modules[*id].resource_id);</span><br><span class="line"></span><br><span class="line">    entry_points.extend(dynamic_import_entry_ids.into_iter().map(|id| EntryPoint &#123;</span><br><span class="line">      name: <span class="literal">None</span>,</span><br><span class="line">      id,</span><br><span class="line">      kind: EntryPointKind::DynamicImport,</span><br><span class="line">    &#125;));</span><br><span class="line"></span><br><span class="line">    <span class="literal">Ok</span>(ModuleLoaderOutput &#123;</span><br><span class="line">      module_table: ModuleTable &#123;</span><br><span class="line">        normal_modules: modules,</span><br><span class="line">        external_modules: <span class="keyword">self</span>.external_modules,</span><br><span class="line">      &#125;,</span><br><span class="line">      symbols: <span class="keyword">self</span>.symbols,</span><br><span class="line">      ast_table,</span><br><span class="line">      entry_points,</span><br><span class="line">      runtime: runtime_brief.expect(<span class="string">"Failed to find runtime module. This should not happen"</span>),</span><br><span class="line">      warnings: all_warnings,</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建扫描任务</span></span><br><span class="line">  <span class="function"><span class="keyword">fn</span> <span class="title">try_spawn_new_task</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>, info: &amp;ResolvedRequestInfo) -&gt; ModuleId &#123;</span><br><span class="line">    <span class="keyword">match</span> <span class="keyword">self</span>.visited.entry(Arc::&lt;<span class="built_in">str</span>&gt;::clone(&amp;info.path.path)) &#123;</span><br><span class="line">      <span class="comment">// 如果有就直接返回结果</span></span><br><span class="line">      std::collections::hash_map::Entry::Occupied(visited) =&gt; *visited.get(),</span><br><span class="line">      std::collections::hash_map::Entry::Vacant(not_visited) =&gt; &#123;</span><br><span class="line">        <span class="comment">// external</span></span><br><span class="line">        <span class="keyword">if</span> info.is_external &#123;</span><br><span class="line">          <span class="keyword">let</span> id = <span class="keyword">self</span>.external_modules.len_idx();</span><br><span class="line">          not_visited.insert(id.into());</span><br><span class="line">          <span class="keyword">let</span> ext = ExternalModule::new(id, info.path.path.to_string());</span><br><span class="line">          <span class="keyword">self</span>.external_modules.push(ext);</span><br><span class="line">          id.into()</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          <span class="comment">// 项目内文件</span></span><br><span class="line">          <span class="keyword">let</span> id = <span class="keyword">self</span>.intermediate_normal_modules.alloc_module_id(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>.symbols);</span><br><span class="line">          not_visited.insert(id.into());</span><br><span class="line">          <span class="keyword">self</span>.remaining += <span class="number">1</span>;</span><br><span class="line">          <span class="keyword">let</span> module_path = info.path.clone();</span><br><span class="line"></span><br><span class="line">          <span class="keyword">let</span> task = NormalModuleTask::new(</span><br><span class="line">            <span class="comment">// safety: Data in `ModuleTaskContext` are alive as long as the `NormalModuleTask`, but rustc doesn't know that.</span></span><br><span class="line">            <span class="keyword">unsafe</span> &#123; <span class="keyword">self</span>.common_data.assume_static() &#125;,</span><br><span class="line">            id,</span><br><span class="line">            module_path,</span><br><span class="line">            info.module_type,</span><br><span class="line">          );</span><br><span class="line">          tokio::spawn(async <span class="keyword">move</span> &#123; task.run().await &#125;);</span><br><span class="line">          id.into()</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<p>模块扫描做的事情就比较简单，加载文件，通过 oxc 将其 ast 获得，构建扫描结果</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line">async <span class="function"><span class="keyword">fn</span> <span class="title">run_inner</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; anyhow::<span class="built_in">Result</span>&lt;()&gt; &#123;</span><br><span class="line">  tracing::trace!(<span class="string">"process &#123;:?&#125;"</span>, <span class="keyword">self</span>.resolved_path);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> sourcemap_chain = <span class="built_in">vec!</span>[];</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> warnings = <span class="built_in">vec!</span>[];</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Run plugin load to get content first, if it is None using read fs as fallback.</span></span><br><span class="line">  <span class="keyword">let</span> source = <span class="keyword">match</span> load_source(</span><br><span class="line">    &amp;<span class="keyword">self</span>.ctx.plugin_driver,</span><br><span class="line">    &amp;<span class="keyword">self</span>.resolved_path,</span><br><span class="line">    &amp;<span class="keyword">self</span>.ctx.fs,</span><br><span class="line">    &amp;<span class="keyword">mut</span> sourcemap_chain,</span><br><span class="line">  )</span><br><span class="line">  .await</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="literal">Ok</span>(ret) =&gt; ret,</span><br><span class="line">    <span class="literal">Err</span>(errs) =&gt; &#123;</span><br><span class="line">      <span class="keyword">self</span>.errors.extend(errs);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">Ok</span>(());</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Run plugin transform.</span></span><br><span class="line">  <span class="keyword">let</span> source: Arc&lt;<span class="built_in">str</span>&gt; = <span class="keyword">match</span> transform_source(</span><br><span class="line">    &amp;<span class="keyword">self</span>.ctx.plugin_driver,</span><br><span class="line">    &amp;<span class="keyword">self</span>.resolved_path,</span><br><span class="line">    source,</span><br><span class="line">    &amp;<span class="keyword">mut</span> sourcemap_chain,</span><br><span class="line">  )</span><br><span class="line">  .await</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="literal">Ok</span>(ret) =&gt; ret.into(),</span><br><span class="line">    <span class="literal">Err</span>(errs) =&gt; &#123;</span><br><span class="line">      <span class="keyword">self</span>.errors.extend(errs);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">Ok</span>(());</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> (ast, scope, scan_result, ast_symbol, namespace_symbol) = <span class="keyword">self</span>.scan(&amp;source);</span><br><span class="line">  tracing::trace!(<span class="string">"scan &#123;:?&#125;"</span>, <span class="keyword">self</span>.resolved_path);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> res = <span class="keyword">self</span>.resolve_dependencies(&amp;scan_result.import_records).await?;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> ScanResult &#123;</span><br><span class="line">    named_imports,</span><br><span class="line">    named_exports,</span><br><span class="line">    stmt_infos,</span><br><span class="line">    import_records,</span><br><span class="line">    star_exports,</span><br><span class="line">    default_export_ref,</span><br><span class="line">    imports,</span><br><span class="line">    exports_kind,</span><br><span class="line">    repr_name,</span><br><span class="line">    warnings: scan_warnings,</span><br><span class="line">  &#125; = scan_result;</span><br><span class="line">  warnings.extend(scan_warnings);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> builder = NormalModuleBuilder &#123;</span><br><span class="line">    source: <span class="literal">Some</span>(source),</span><br><span class="line">    id: <span class="literal">Some</span>(<span class="keyword">self</span>.module_id),</span><br><span class="line">    repr_name: <span class="literal">Some</span>(repr_name),</span><br><span class="line">    path: <span class="literal">Some</span>(ResourceId::new(Arc::&lt;<span class="built_in">str</span>&gt;::clone(&amp;<span class="keyword">self</span>.resolved_path.path).into())),</span><br><span class="line">    named_imports: <span class="literal">Some</span>(named_imports),</span><br><span class="line">    named_exports: <span class="literal">Some</span>(named_exports),</span><br><span class="line">    stmt_infos: <span class="literal">Some</span>(stmt_infos),</span><br><span class="line">    imports: <span class="literal">Some</span>(imports),</span><br><span class="line">    star_exports: <span class="literal">Some</span>(star_exports),</span><br><span class="line">    default_export_ref,</span><br><span class="line">    scope: <span class="literal">Some</span>(scope),</span><br><span class="line">    exports_kind: <span class="literal">Some</span>(exports_kind),</span><br><span class="line">    namespace_symbol: <span class="literal">Some</span>(namespace_symbol),</span><br><span class="line">    module_type: <span class="keyword">self</span>.module_type,</span><br><span class="line">    pretty_path: <span class="literal">Some</span>(<span class="keyword">self</span>.resolved_path.prettify(&amp;<span class="keyword">self</span>.ctx.input_options.cwd)),</span><br><span class="line">    sourcemap_chain,</span><br><span class="line">    ..<span class="built_in">Default</span>::<span class="keyword">default</span>()</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">self</span></span><br><span class="line">    .ctx</span><br><span class="line">    .tx</span><br><span class="line">    .send(Msg::NormalModuleDone(NormalModuleTaskResult &#123;</span><br><span class="line">      resolved_deps: res,</span><br><span class="line">      module_id: <span class="keyword">self</span>.module_id,</span><br><span class="line">      warnings,</span><br><span class="line">      ast_symbol,</span><br><span class="line">      builder,</span><br><span class="line">      raw_import_records: import_records,</span><br><span class="line">      ast,</span><br><span class="line">    &#125;))</span><br><span class="line">    .expect(<span class="string">"Send should not fail"</span>);</span><br><span class="line">  tracing::trace!(<span class="string">"end process &#123;:?&#125;"</span>, <span class="keyword">self</span>.resolved_path);</span><br><span class="line">  <span class="literal">Ok</span>(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在扫描完成后，我们会得到结果 <code>ScanStageOutput</code>,下一步是通过 <code>LinkStage</code> 将其关联起来</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">link</span></span>(<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; LinkStageOutput &#123;</span><br><span class="line">  tracing::info!(<span class="string">"Start link stage"</span>);</span><br><span class="line">  <span class="keyword">self</span>.sort_modules();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 根据每个模块的引入，找到他们对应的导出，然后确定导出的类型（cjs esm）</span></span><br><span class="line">  <span class="keyword">self</span>.determine_module_exports_kind();</span><br><span class="line">  <span class="comment">// 封装模块的各种信息，esm cjs</span></span><br><span class="line">  <span class="keyword">self</span>.wrap_modules();</span><br><span class="line">  <span class="comment">// 绑定模块之间的导入和导出关系</span></span><br><span class="line">  <span class="keyword">self</span>.bind_imports_and_exports();</span><br><span class="line">  tracing::debug!(<span class="string">"linking modules &#123;:#?&#125;"</span>, <span class="keyword">self</span>.metas);</span><br><span class="line">  <span class="comment">// 为每个模块创建好自己的导出闭包</span></span><br><span class="line">  <span class="comment">//  CommonJS</span></span><br><span class="line">  <span class="comment">//   var require_foo = __commonJS((exports, module) =&gt; &#123;</span></span><br><span class="line">  <span class="comment">//     ...</span></span><br><span class="line">  <span class="comment">//   &#125;);</span></span><br><span class="line">  <span class="comment">//  ESM</span></span><br><span class="line">  <span class="comment">//   var init_foo = __esm(() =&gt; &#123;</span></span><br><span class="line">  <span class="comment">//     ...</span></span><br><span class="line">  <span class="comment">//   &#125;);</span></span><br><span class="line">  <span class="keyword">self</span>.create_exports_for_modules();</span><br><span class="line">  <span class="comment">// 处理引入和包symbol的关系</span></span><br><span class="line">  <span class="comment">// ESM</span></span><br><span class="line">  <span class="comment">// commonjs: require_foo -&gt; var import_foo = __toESM(require_foo()) esm: init_foo -&gt; init_foo()</span></span><br><span class="line">  <span class="comment">// CommonJS</span></span><br><span class="line">  <span class="comment">// commonjs: require_foo -&gt; require_foo() esm: init_foo -&gt; (init_foo(), toCommonJS(foo_exports))</span></span><br><span class="line">  <span class="keyword">self</span>.reference_needed_symbols();</span><br><span class="line">  <span class="comment">// 使用rayon并行标记语句是否被使用</span></span><br><span class="line">  <span class="keyword">self</span>.include_statements();</span><br><span class="line"></span><br><span class="line">  LinkStageOutput &#123;</span><br><span class="line">    module_table: <span class="keyword">self</span>.module_table,</span><br><span class="line">    entries: <span class="keyword">self</span>.entries,</span><br><span class="line">    sorted_modules: <span class="keyword">self</span>.sorted_modules,</span><br><span class="line">    metas: <span class="keyword">self</span>.metas,</span><br><span class="line">    symbols: <span class="keyword">self</span>.symbols,</span><br><span class="line">    runtime: <span class="keyword">self</span>.runtime,</span><br><span class="line">    warnings: <span class="keyword">self</span>.warnings,</span><br><span class="line">    ast_table: <span class="keyword">self</span>.ast_table,</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="bundle"><a href="#bundle" class="headerlink" title="bundle"></a>bundle</h1><p>bundle 环节是将上一步的 module 们进行组合生成 chunks 和 asset</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> async <span class="function"><span class="keyword">fn</span> <span class="title">bundle</span></span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) -&gt; BatchedResult&lt;<span class="built_in">Vec</span>&lt;Output&gt;&gt; &#123;</span><br><span class="line">  <span class="keyword">use</span> rayon::prelude::*;</span><br><span class="line">  tracing::info!(<span class="string">"Start bundle stage"</span>);</span><br><span class="line">  <span class="comment">// 构建chunk关联图</span></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> chunk_graph = <span class="keyword">self</span>.generate_chunks();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">self</span>.generate_chunk_filenames(&amp;<span class="keyword">mut</span> chunk_graph);</span><br><span class="line">  tracing::info!(<span class="string">"generate_chunk_filenames"</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">self</span>.compute_cross_chunk_links(&amp;<span class="keyword">mut</span> chunk_graph);</span><br><span class="line">  tracing::info!(<span class="string">"compute_cross_chunk_links"</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 并行处理每个块，解决chunk间名称冲突（如变量、函数）</span></span><br><span class="line">  chunk_graph.chunks.iter_mut().par_bridge().for_each(|chunk| &#123;</span><br><span class="line">    chunk.de_conflict(<span class="keyword">self</span>.link_output);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 并行处理每个模块，进行模块的最终化处理</span></span><br><span class="line">  <span class="keyword">self</span></span><br><span class="line">    .link_output</span><br><span class="line">    .ast_table</span><br><span class="line">    .iter_mut_enumerated()</span><br><span class="line">    .par_bridge()</span><br><span class="line">    .filter(|(id, _)| <span class="keyword">self</span>.link_output.module_table.normal_modules[*id].is_included)</span><br><span class="line">    .for_each(|(id, ast)| &#123;</span><br><span class="line">      <span class="keyword">let</span> module = &amp;<span class="keyword">self</span>.link_output.module_table.normal_modules[id];</span><br><span class="line">      <span class="keyword">let</span> chunk_id = chunk_graph.module_to_chunk[module.id].unwrap();</span><br><span class="line">      <span class="keyword">let</span> chunk = &amp;chunk_graph.chunks[chunk_id];</span><br><span class="line">      <span class="keyword">let</span> linking_info = &amp;<span class="keyword">self</span>.link_output.metas[module.id];</span><br><span class="line">      <span class="comment">// 确定是否需要生成命名空间变量声明，并将其添加。</span></span><br><span class="line">      <span class="comment">// 遍历模块中的每个语句，根据语句的类型进行相应的处理：</span></span><br><span class="line">      <span class="comment">// 对于导入声明，判断是否需要移除，并根据情况执行相应的操作。</span></span><br><span class="line">      <span class="comment">// 对于导出声明，根据不同的导出形式执行相应的操作，如移除导出声明、添加重定向导出等。</span></span><br><span class="line">      <span class="comment">// 对于默认导出声明，将其转换为对应的声明形式。</span></span><br><span class="line">      <span class="comment">// 如果需要，在程序体的最前面或最后面添加包装器，用于将模块封装成 CommonJS 或 ESM 形式。</span></span><br><span class="line">      finalize_normal_module(</span><br><span class="line">        module,</span><br><span class="line">        FinalizerContext &#123;</span><br><span class="line">          canonical_names: &amp;chunk.canonical_names,</span><br><span class="line">          id: module.id,</span><br><span class="line">          symbols: &amp;<span class="keyword">self</span>.link_output.symbols,</span><br><span class="line">          linking_info,</span><br><span class="line">          module,</span><br><span class="line">          modules: &amp;<span class="keyword">self</span>.link_output.module_table.normal_modules,</span><br><span class="line">          linking_infos: &amp;<span class="keyword">self</span>.link_output.metas,</span><br><span class="line">          runtime: &amp;<span class="keyword">self</span>.link_output.runtime,</span><br><span class="line">          chunk_graph: &amp;chunk_graph,</span><br><span class="line">        &#125;,</span><br><span class="line">        ast,</span><br><span class="line">      );</span><br><span class="line">    &#125;);</span><br><span class="line">  tracing::info!(<span class="string">"finalizing modules"</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> chunks = block_on_spawn_all(chunk_graph.chunks.iter().map(|c| async &#123;</span><br><span class="line">    <span class="comment">// 将最终的ast变成最终的代码和 sourcemap。</span></span><br><span class="line">    c.render(<span class="keyword">self</span>.input_options, <span class="keyword">self</span>.link_output, &amp;chunk_graph, <span class="keyword">self</span>.output_options).await</span><br><span class="line">  &#125;))</span><br><span class="line">  .into_iter()</span><br><span class="line">  .collect::&lt;<span class="built_in">Result</span>&lt;<span class="built_in">Vec</span>&lt;_&gt;, _&gt;&gt;()?;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> assets = <span class="built_in">vec!</span>[];</span><br><span class="line">  <span class="comment">// 使用异步生成每个 chunk</span></span><br><span class="line">  render_chunks(<span class="keyword">self</span>.plugin_driver, chunks).await?.into_iter().try_for_each(</span><br><span class="line">    |chunk| -&gt; <span class="built_in">Result</span>&lt;(), BuildError&gt; &#123;</span><br><span class="line">      <span class="keyword">let</span> ChunkRenderReturn &#123; <span class="keyword">mut</span> map, rendered_chunk, <span class="keyword">mut</span> code &#125; = chunk;</span><br><span class="line">      <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(map) = map.as_mut() &#123;</span><br><span class="line">        map.set_file(<span class="literal">Some</span>(rendered_chunk.file_name.clone()));</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span>.output_options.sourcemap &#123;</span><br><span class="line">          SourceMapType::File =&gt; &#123;</span><br><span class="line">            <span class="keyword">let</span> map = &#123;</span><br><span class="line">              <span class="keyword">let</span> <span class="keyword">mut</span> buf = <span class="built_in">vec!</span>[];</span><br><span class="line">              map.to_writer(&amp;<span class="keyword">mut</span> buf).map_err(|e| BuildError::sourcemap_error(e.to_string()))?;</span><br><span class="line">              <span class="keyword">unsafe</span> &#123; <span class="built_in">String</span>::from_utf8_unchecked(buf) &#125;</span><br><span class="line">            &#125;;</span><br><span class="line">            <span class="keyword">let</span> map_file_name = <span class="built_in">format!</span>(<span class="string">"&#123;&#125;.map"</span>, rendered_chunk.file_name);</span><br><span class="line">            assets.push(Output::Asset(<span class="built_in">Box</span>::new(OutputAsset &#123;</span><br><span class="line">              file_name: map_file_name.clone(),</span><br><span class="line">              source: map,</span><br><span class="line">            &#125;)));</span><br><span class="line">            code.push_str(&amp;<span class="built_in">format!</span>(<span class="string">"\n//# sourceMappingURL=&#123;map_file_name&#125;"</span>));</span><br><span class="line">          &#125;</span><br><span class="line">          SourceMapType::Inline =&gt; &#123;</span><br><span class="line">            <span class="keyword">let</span> data_url =</span><br><span class="line">              map.to_data_url().map_err(|e| BuildError::sourcemap_error(e.to_string()))?;</span><br><span class="line">            code.push_str(&amp;<span class="built_in">format!</span>(<span class="string">"\n//# sourceMappingURL=&#123;data_url&#125;"</span>));</span><br><span class="line">          &#125;</span><br><span class="line">          SourceMapType::Hidden =&gt; &#123;&#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">let</span> sourcemap_file_name = map.as_ref().map(|_| <span class="built_in">format!</span>(<span class="string">"&#123;&#125;.map"</span>, rendered_chunk.file_name));</span><br><span class="line">      assets.push(Output::Chunk(<span class="built_in">Box</span>::new(OutputChunk &#123;</span><br><span class="line">        file_name: rendered_chunk.file_name,</span><br><span class="line">        code,</span><br><span class="line">        is_entry: rendered_chunk.is_entry,</span><br><span class="line">        is_dynamic_entry: rendered_chunk.is_dynamic_entry,</span><br><span class="line">        facade_module_id: rendered_chunk.facade_module_id,</span><br><span class="line">        modules: rendered_chunk.modules,</span><br><span class="line">        exports: rendered_chunk.exports,</span><br><span class="line">        module_ids: rendered_chunk.module_ids,</span><br><span class="line">        map,</span><br><span class="line">        sourcemap_file_name,</span><br><span class="line">      &#125;)));</span><br><span class="line">      <span class="literal">Ok</span>(())</span><br><span class="line">    &#125;,</span><br><span class="line">  )?;</span><br><span class="line"></span><br><span class="line">  tracing::info!(<span class="string">"rendered chunks"</span>);</span><br><span class="line"></span><br><span class="line">  <span class="literal">Ok</span>(assets)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">generate_chunks</span></span>(&amp;<span class="keyword">self</span>) -&gt; ChunkGraph &#123;</span><br><span class="line">  <span class="keyword">let</span> entries_len: <span class="built_in">u32</span> =</span><br><span class="line">    <span class="keyword">self</span>.link_output.entries.len().try_into().expect(<span class="string">"Too many entries, u32 overflowed."</span>);</span><br><span class="line">  <span class="comment">// If we are in test environment, to make the runtime module always fall into a standalone chunk,</span></span><br><span class="line">  <span class="comment">// we create a facade entry point for it.</span></span><br><span class="line">  <span class="keyword">let</span> entries_len = <span class="keyword">if</span> is_in_rust_test_mode() &#123; entries_len + <span class="number">1</span> &#125; <span class="keyword">else</span> &#123; entries_len &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> module_to_bits = index_vec::index_vec![BitSet::new(entries_len); <span class="keyword">self</span>.link_output.module_table.normal_modules.len()];</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> bits_to_chunk = FxHashMap::with_capacity_and_hasher(</span><br><span class="line">    <span class="keyword">self</span>.link_output.entries.len(),</span><br><span class="line">    BuildHasherDefault::<span class="keyword">default</span>(),</span><br><span class="line">  );</span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> chunks = ChunksVec::with_capacity(<span class="keyword">self</span>.link_output.entries.len());</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 为 entry + 动态引入 创建 chunk</span></span><br><span class="line">  <span class="keyword">for</span> (entry_index, entry_point) <span class="keyword">in</span> <span class="keyword">self</span>.link_output.entries.iter().enumerate() &#123;</span><br><span class="line">    <span class="keyword">let</span> count: <span class="built_in">u32</span> = entry_index.try_into().expect(<span class="string">"Too many entries, u32 overflowed."</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> bits = BitSet::new(entries_len);</span><br><span class="line">    bits.set_bit(count);</span><br><span class="line">    <span class="keyword">let</span> module = &amp;<span class="keyword">self</span>.link_output.module_table.normal_modules[entry_point.id];</span><br><span class="line">    <span class="keyword">let</span> chunk = chunks.push(Chunk::new(</span><br><span class="line">      entry_point.name.clone(),</span><br><span class="line">      bits.clone(),</span><br><span class="line">      <span class="built_in">vec!</span>[],</span><br><span class="line">      ChunkKind::EntryPoint &#123;</span><br><span class="line">        is_user_defined: module.is_user_defined_entry,</span><br><span class="line">        bit: count,</span><br><span class="line">        module: entry_point.id,</span><br><span class="line">      &#125;,</span><br><span class="line">    ));</span><br><span class="line">    bits_to_chunk.insert(bits, chunk);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> is_in_rust_test_mode() &#123;</span><br><span class="line">    <span class="keyword">self</span>.determine_reachable_modules_for_entry(</span><br><span class="line">      <span class="keyword">self</span>.link_output.runtime.id(),</span><br><span class="line">      entries_len - <span class="number">1</span>,</span><br><span class="line">      &amp;<span class="keyword">mut</span> module_to_bits,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 通过 entry 确定模块是否被多个 chunk 引入，多个 module 可以被 chunk 复用</span></span><br><span class="line">  <span class="keyword">self</span>.link_output.entries.iter().enumerate().for_each(|(i, entry_point)| &#123;</span><br><span class="line">    <span class="keyword">self</span>.determine_reachable_modules_for_entry(</span><br><span class="line">      entry_point.id,</span><br><span class="line">      i.try_into().expect(<span class="string">"Too many entries, u32 overflowed."</span>),</span><br><span class="line">      &amp;<span class="keyword">mut</span> module_to_bits,</span><br><span class="line">    );</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> <span class="keyword">mut</span> module_to_chunk: IndexVec&lt;NormalModuleId, <span class="built_in">Option</span>&lt;ChunkId&gt;&gt; = index_vec::index_vec![</span><br><span class="line">    <span class="literal">None</span>;</span><br><span class="line">    <span class="keyword">self</span>.link_output.module_table.normal_modules.len()</span><br><span class="line">  ];</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 1. 将模块分配给相应的 chunk</span></span><br><span class="line">  <span class="comment">// 2. 创建共享chunk来存储属于多个chunk的模块。</span></span><br><span class="line">  <span class="keyword">for</span> normal_module <span class="keyword">in</span> &amp;<span class="keyword">self</span>.link_output.module_table.normal_modules &#123;</span><br><span class="line">    <span class="keyword">if</span> !normal_module.is_included &#123;</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> bits = &amp;module_to_bits[normal_module.id];</span><br><span class="line">    <span class="built_in">debug_assert!</span>(</span><br><span class="line">      !bits.is_empty(),</span><br><span class="line">      <span class="string">"Empty bits means the module is not reachable, so it should bail out with `is_included: false`"</span></span><br><span class="line">    );</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">let</span> <span class="literal">Some</span>(chunk_id) = bits_to_chunk.get(bits).copied() &#123;</span><br><span class="line">      chunks[chunk_id].modules.push(normal_module.id);</span><br><span class="line">      module_to_chunk[normal_module.id] = <span class="literal">Some</span>(chunk_id);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="keyword">let</span> chunk = Chunk::new(<span class="literal">None</span>, bits.clone(), <span class="built_in">vec!</span>[normal_module.id], ChunkKind::Common);</span><br><span class="line">      <span class="keyword">let</span> chunk_id = chunks.push(chunk);</span><br><span class="line">      module_to_chunk[normal_module.id] = <span class="literal">Some</span>(chunk_id);</span><br><span class="line">      bits_to_chunk.insert(bits.clone(), chunk_id);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 按执行顺序对每个块中的模块进行排序</span></span><br><span class="line">  chunks.iter_mut().for_each(|chunk| &#123;</span><br><span class="line">    chunk.modules.sort_by_key(|module_id| &#123;</span><br><span class="line">      <span class="keyword">self</span>.link_output.module_table.normal_modules[*module_id].exec_order</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  tracing::trace!(<span class="string">"Generated chunks: &#123;:#?&#125;"</span>, chunks);</span><br><span class="line"></span><br><span class="line">  ChunkGraph &#123; chunks, module_to_chunk &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/rust/" rel="tag"># rust</a>
+          
+            <a href="/tags/rolldown/" rel="tag"># rolldown</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2023/11/12/编译原理实战——实现一个简单的js引擎/" rel="next" title="编译原理实战——实现一个简单的js引擎">
+                <i class="fa fa-chevron-left"></i> 编译原理实战——实现一个简单的js引擎
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">24</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">36</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#入口"><span class="nav-number">2.</span> <span class="nav-text">入口</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Build-总览"><span class="nav-number">3.</span> <span class="nav-text">Build 总览</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#try-build"><span class="nav-number">4.</span> <span class="nav-text">try_build</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#bundle"><span class="nav-number">5.</span> <span class="nav-text">bundle</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2024</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
