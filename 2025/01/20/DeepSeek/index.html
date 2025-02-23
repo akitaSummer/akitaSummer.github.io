@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言本文是阅读 DeepSeek 论文后的个人理解沉淀。 LLM 相关原理快速入门在 LLM 中的核心关键点是 pre-training（预训练）和 post-training（后训练）。 在我们一般说的基座模型，例如 DeepSeek-V3-Base 他就是属于预训练模型，通过 超大神经网络参数(＞600B)＋超多数据，得到一个 token predator (Token 预测机) 而不是 GP">
+<meta name="keywords" content="DeepSeek">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DeepSeek 论文浅析">
+<meta property="og:url" content="https://akitaSummer.github.io/2025/01/20/DeepSeek/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="前言本文是阅读 DeepSeek 论文后的个人理解沉淀。 LLM 相关原理快速入门在 LLM 中的核心关键点是 pre-training（预训练）和 post-training（后训练）。 在我们一般说的基座模型，例如 DeepSeek-V3-Base 他就是属于预训练模型，通过 超大神经网络参数(＞600B)＋超多数据，得到一个 token predator (Token 预测机) 而不是 GP">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/deepseek/approach.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/deepseek/aha.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/deepseek/black.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/deepseek/fkl.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/deepseek/rkl.png">
+<meta property="og:updated_time" content="2025-02-23T13:02:05.449Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="DeepSeek 论文浅析">
+<meta name="twitter:description" content="前言本文是阅读 DeepSeek 论文后的个人理解沉淀。 LLM 相关原理快速入门在 LLM 中的核心关键点是 pre-training（预训练）和 post-training（后训练）。 在我们一般说的基座模型，例如 DeepSeek-V3-Base 他就是属于预训练模型，通过 超大神经网络参数(＞600B)＋超多数据，得到一个 token predator (Token 预测机) 而不是 GP">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/deepseek/approach.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2025/01/20/DeepSeek/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>DeepSeek 论文浅析 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2025/01/20/DeepSeek/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">DeepSeek 论文浅析
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2025-01-20 00:21:35" itemprop="dateCreated datePublished" datetime="2025-01-20T00:21:35+08:00">2025-01-20</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2025-02-23 21:02:05" itemprop="dateModified" datetime="2025-02-23T21:02:05+08:00">2025-02-23</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2025/01/20/DeepSeek/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2025/01/20/DeepSeek/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本文是阅读 DeepSeek 论文后的个人理解沉淀。</p>
+<h1 id="LLM-相关原理快速入门"><a href="#LLM-相关原理快速入门" class="headerlink" title="LLM 相关原理快速入门"></a>LLM 相关原理快速入门</h1><p>在 LLM 中的核心关键点是 pre-training（预训练）和 post-training（后训练）。</p>
+<p>在我们一般说的基座模型，例如 <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3-Base" target="_blank" rel="noopener">DeepSeek-V3-Base</a> 他就是属于预训练模型，通过 超大神经网络参数(＞600B)＋超多数据，得到一个 token predator (Token 预测机) 而不是 GPT Bot。这是非常困难的工作，一般是由大公司来做，他们拥有大量的数据和 GPU。</p>
+<p>而 <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3" target="_blank" rel="noopener">DeepSeek-V3</a> 属于通过后训练得到的模型，他是在预训练模型基础上进行多次后训练来得到。其中一个比较重要的概念就是 Reinforcement learning from human feedback（基于人类反馈的强化学习）,GPT 3.5 就是使用 RLHF 进行后训练，使傻傻的 Token 预测机能和人类说话，让人觉得他像个真人。</p>
+<p>当然后训练有很多种，这里介绍几种：</p>
+<ol>
+<li>SFT（监督微调，Supervised Fine-Tuning）： 相对预训练少量优质打标数据，有 Q and A。</li>
+<li>RL (强化学习，Reinforcement learning)：只有 Q 没有 A，但是有策略 + 评分器来打分，比如力扣+测试集。</li>
+<li>RLHF: 是否是人类偏好，一般是少量优质人类偏好的打标数据训练出一个打分模型，用这个模型来进行 RL</li>
+</ol>
+<h1 id="DeepSeek-R1-做了什么"><a href="#DeepSeek-R1-做了什么" class="headerlink" title="DeepSeek-R1 做了什么"></a>DeepSeek-R1 做了什么</h1><p><img src="/image/deepseek/approach.png" alt="approach"><br>在 DeepSeek 论文中的第二章中阐述了他们的核心三件事：通过 RL 得到 ZERO，进一步后训练得到R1和蒸馏优化小模型</p>
+<h1 id="DeepSeek-R1-Zero"><a href="#DeepSeek-R1-Zero" class="headerlink" title="DeepSeek-R1-Zero"></a>DeepSeek-R1-Zero</h1><p>人们通过人类学习方式创造了一些机器学习：</p>
+<ul>
+<li>重复，模仿 -&gt; 监督学习 SFT</li>
+<li>尝试，失败 -&gt; 强化学习 RL</li>
+</ul>
+<p>在 DeepSeek-V3-Base 进行不断地 RL 后得到了 <a href="https://huggingface.co/deepseek-ai/DeepSeek-R1-Zero" target="_blank" rel="noopener">DeepSeek-R1-Zero</a>。</p>
+<p>他有两种核心策略：</p>
+<ol>
+<li>正确性检验：力扣，数学计算等有准确评价标准的测试</li>
+<li>格式检验：\<think>…\</think>\<answer>…\</answer></li>
+</ol>
+<p>在他们不断训练的时候发现了一个 aha-moment，这个时候认为他有了推理能力。</p>
+<p><img src="/image/deepseek/aha.png" alt="aha"></p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> re</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">from</span> datasets <span class="keyword">import</span> load_dataset, Dataset</span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForCausalLM</span><br><span class="line"><span class="keyword">import</span> trl</span><br><span class="line"><span class="keyword">from</span> trl <span class="keyword">import</span> GRPOConfig, GRPOTrainer</span><br><span class="line"><span class="keyword">from</span> peft <span class="keyword">import</span> LoraConfig, get_peft_model, TaskType</span><br><span class="line"></span><br><span class="line">SYSTEM_PROMPT = <span class="string">"""</span></span><br><span class="line"><span class="string">按照如下格式生成：</span></span><br><span class="line"><span class="string">&lt;think&gt;</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line"><span class="string">&lt;/think&gt;</span></span><br><span class="line"><span class="string">&lt;answer&gt;</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line"><span class="string">&lt;/answer&gt;</span></span><br><span class="line"><span class="string">"""</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">process_data</span><span class="params">(data)</span>:</span></span><br><span class="line">    data = data.map(<span class="keyword">lambda</span> x: &#123;</span><br><span class="line">        <span class="string">'prompt'</span>: [</span><br><span class="line">            &#123;<span class="string">'role'</span>: <span class="string">'system'</span>, <span class="string">'content'</span>: SYSTEM_PROMPT&#125;,</span><br><span class="line">            &#123;<span class="string">'role'</span>: <span class="string">'user'</span>, <span class="string">'content'</span>: x[<span class="string">'question_zh-cn'</span>]&#125;</span><br><span class="line">        ],</span><br><span class="line">        <span class="string">'answer'</span>: x[<span class="string">'answer_only'</span>]</span><br><span class="line">    &#125;) </span><br><span class="line">    <span class="keyword">return</span> data</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">extract_answer</span><span class="params">(text)</span>:</span></span><br><span class="line">    answer = text.split(<span class="string">"&lt;answer&gt;"</span>)[<span class="number">-1</span>]</span><br><span class="line">    answer = answer.split(<span class="string">"&lt;/answer&gt;"</span>)[<span class="number">0</span>]</span><br><span class="line">    <span class="keyword">return</span> answer.strip()</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">mark_num</span><span class="params">(text)</span>:</span></span><br><span class="line">    reward = <span class="number">0</span></span><br><span class="line">    <span class="keyword">if</span> text.count(<span class="string">"&lt;think&gt;\n"</span>) == <span class="number">1</span>:</span><br><span class="line">        reward += <span class="number">0.125</span></span><br><span class="line">        </span><br><span class="line">    <span class="keyword">if</span> text.count(<span class="string">"&lt;/think&gt;\n"</span>) == <span class="number">1</span>:</span><br><span class="line">        reward += <span class="number">0.125</span></span><br><span class="line">        </span><br><span class="line">    <span class="keyword">if</span> text.count(<span class="string">"&lt;answer&gt;\n"</span>) == <span class="number">1</span>:</span><br><span class="line">        reward += <span class="number">0.125</span></span><br><span class="line">        </span><br><span class="line">    <span class="keyword">if</span> text.count(<span class="string">"&lt;/answer&gt;\n"</span>) == <span class="number">1</span>:</span><br><span class="line">        reward += <span class="number">0.125</span></span><br><span class="line">    <span class="keyword">return</span> reward</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成答案是否正确的奖励</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">correctness_reward</span><span class="params">(prompts, completions, answer, **kwargs)</span>:</span></span><br><span class="line">    responses = [completion[<span class="number">0</span>][<span class="string">'content'</span>] <span class="keyword">for</span> completion <span class="keyword">in</span> completions]</span><br><span class="line">    extracted_responses = [extract_answer(r) <span class="keyword">for</span> r <span class="keyword">in</span> responses]</span><br><span class="line">    print(<span class="string">f"问题:\n<span class="subst">&#123;prompts[<span class="number">0</span>][<span class="number">-1</span>][<span class="string">'content'</span>]&#125;</span>"</span>, <span class="string">f"\n答案:\n<span class="subst">&#123;answer[<span class="number">0</span>]&#125;</span>"</span>, <span class="string">f"\n模型输出:\n<span class="subst">&#123;responses[<span class="number">0</span>]&#125;</span>"</span>, <span class="string">f"\n提取后的答案:\n<span class="subst">&#123;extracted_responses[<span class="number">0</span>]&#125;</span>"</span>)</span><br><span class="line">    <span class="keyword">return</span> [<span class="number">2.0</span> <span class="keyword">if</span> response == str(ans) <span class="keyword">else</span> <span class="number">0.0</span> <span class="keyword">for</span> response, ans <span class="keyword">in</span> zip(extracted_responses, answer)]</span><br><span class="line"><span class="comment"># 生成答案是否是数字的奖励（单纯依赖结果是否正确进行奖励，条件很苛刻，会导致奖励比较稀疏，模型难以收敛，所以加上答案是否是数字的奖励，虽然答案错误，但是至少生成的是数字（对于数学问题），也要给予适当奖励）</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">digit_reward</span><span class="params">(completions, **kwargs)</span>:</span></span><br><span class="line">    responses = [completion[<span class="number">0</span>][<span class="string">'content'</span>] <span class="keyword">for</span> completion <span class="keyword">in</span> completions]</span><br><span class="line">    extracted_responses = [extract_answer(r) <span class="keyword">for</span> r <span class="keyword">in</span> responses]</span><br><span class="line">    <span class="keyword">return</span> [<span class="number">0.5</span> <span class="keyword">if</span> response.isdigit() <span class="keyword">else</span> <span class="number">0.0</span> <span class="keyword">for</span> response <span class="keyword">in</span> extracted_responses]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 格式奖励</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">hard_format_reward</span><span class="params">(completions, **kwargs)</span>:</span></span><br><span class="line">    pattern = <span class="string">r"^&lt;think&gt;\n.*?n&lt;/think&gt;\n&lt;answer&gt;\n.*?\n&lt;/answer&gt;\n$"</span></span><br><span class="line">    responses = [completion[<span class="number">0</span>][<span class="string">"content"</span>] <span class="keyword">for</span> completion <span class="keyword">in</span> completions]</span><br><span class="line">    matches = [re.match(pattern, response) <span class="keyword">for</span> response <span class="keyword">in</span> responses]</span><br><span class="line">    <span class="keyword">return</span> [<span class="number">0.5</span> <span class="keyword">if</span> match <span class="keyword">else</span> <span class="number">0.0</span> <span class="keyword">for</span> match <span class="keyword">in</span> matches]</span><br><span class="line"><span class="comment"># 格式奖励</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">soft_format_reward</span><span class="params">(completions, **kwargs)</span>:</span></span><br><span class="line">    pattern = <span class="string">r"&lt;think&gt;.*?&lt;/think&gt;\s*&lt;answer&gt;.*?&lt;/answer&gt;"</span></span><br><span class="line">    responses = [completion[<span class="number">0</span>][<span class="string">"content"</span>] <span class="keyword">for</span> completion <span class="keyword">in</span> completions]</span><br><span class="line">    matches = [re.match(pattern, response) <span class="keyword">for</span> response <span class="keyword">in</span> responses]</span><br><span class="line">    <span class="keyword">return</span> [<span class="number">0.5</span> <span class="keyword">if</span> match <span class="keyword">else</span> <span class="number">0.0</span> <span class="keyword">for</span> match <span class="keyword">in</span> matches]</span><br><span class="line"><span class="comment"># 标记奖励（改善格式奖励稀疏问题）</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">mark_reward</span><span class="params">(completions, **kwargs)</span>:</span></span><br><span class="line">    responses = [completion[<span class="number">0</span>][<span class="string">"content"</span>] <span class="keyword">for</span> completion <span class="keyword">in</span> completions]</span><br><span class="line">    <span class="keyword">return</span> [mark_num(response) <span class="keyword">for</span> response <span class="keyword">in</span> responses]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    model_name = <span class="string">"/Users/liuyu/AkitaSummer/deepseek_learn/Qwen2.5-0.5B-Instruct"</span></span><br><span class="line"></span><br><span class="line">    model = AutoModelForCausalLM.from_pretrained(model_name)</span><br><span class="line">    model.cuda()</span><br><span class="line">    </span><br><span class="line">    tokenizer = AutoTokenizer.from_pretrained(model_name)</span><br><span class="line">    </span><br><span class="line">    ds = load_dataset(<span class="string">'/Users/liuyu/AkitaSummer/deepseek_learn/gsm8k_chinese'</span>)</span><br><span class="line">    data = process_data(ds[<span class="string">'train'</span>])</span><br><span class="line">    </span><br><span class="line">    output_dir=<span class="string">"output"</span></span><br><span class="line"></span><br><span class="line">    training_args = GRPOConfig(</span><br><span class="line">        output_dir=output_dir,</span><br><span class="line">        learning_rate=<span class="number">5e-6</span>,</span><br><span class="line">        adam_beta1 = <span class="number">0.9</span>,</span><br><span class="line">        adam_beta2 = <span class="number">0.99</span>,</span><br><span class="line">        weight_decay = <span class="number">0.1</span>,</span><br><span class="line">        warmup_ratio = <span class="number">0.1</span>,</span><br><span class="line">        lr_scheduler_type=<span class="string">'cosine'</span>,</span><br><span class="line">        logging_steps=<span class="number">1</span>,</span><br><span class="line">        bf16=<span class="keyword">True</span>,</span><br><span class="line">        per_device_train_batch_size=<span class="number">1</span>,</span><br><span class="line">        gradient_accumulation_steps=<span class="number">4</span>,</span><br><span class="line">        num_generations=<span class="number">16</span>,</span><br><span class="line">        max_prompt_length=<span class="number">256</span>,</span><br><span class="line">        max_completion_length=<span class="number">200</span>,</span><br><span class="line">        num_train_epochs=<span class="number">1</span>,</span><br><span class="line">        save_steps=<span class="number">100</span>,</span><br><span class="line">        max_grad_norm=<span class="number">0.1</span>,</span><br><span class="line">        log_on_each_node=<span class="keyword">False</span>,</span><br><span class="line">        use_vllm=<span class="keyword">False</span>,</span><br><span class="line">        report_to=<span class="string">"tensorboard"</span></span><br><span class="line">    )</span><br><span class="line">    </span><br><span class="line">    trainer = GRPOTrainer(</span><br><span class="line">    model=model,</span><br><span class="line">    processing_class=tokenizer,</span><br><span class="line">    reward_funcs=[</span><br><span class="line">        mark_reward,</span><br><span class="line">        soft_format_reward,</span><br><span class="line">        hard_format_reward,</span><br><span class="line">        digit_reward,</span><br><span class="line">        correctness_reward</span><br><span class="line">        ],</span><br><span class="line">    args=training_args,</span><br><span class="line">    train_dataset=data,</span><br><span class="line"></span><br><span class="line">)</span><br><span class="line">    trainer.train()</span><br><span class="line">    trainer.save_model(output_dir)</span><br></pre></td></tr></table></figure>
+<h1 id="DeepSeek-R1"><a href="#DeepSeek-R1" class="headerlink" title="DeepSeek-R1"></a>DeepSeek-R1</h1><p>在前面训练出 DeepSeek-R1-Zero 后，仍存在一些可用性问题，比如性能不够强大，双语回答问题等。</p>
+<p>为了解决这个问题，他们做了以下步骤：</p>
+<ol>
+<li>先用 DeepSeek-R1-Zero 生产了 60W 条优质的 \<question>…\</question>\<think>…\</think>\<answer>…\</answer> 格式的推理数据</li>
+<li>再用 DeepSeek-V3 生产了 20W 条优质的 \<question>…\</question>\<answer>…\</answer>  格式的知识数据</li>
+<li>基于 DeepSeek-V3-Base 进行了一轮 SFT，得到一个中间模型</li>
+<li>对中间模型进行一次类似 Zero 的 RL，最后产出 DeepSeek-R1</li>
+</ol>
+<h1 id="蒸馏"><a href="#蒸馏" class="headerlink" title="蒸馏"></a>蒸馏</h1><p>对于大模型的知识蒸馏，主要分为两种.</p>
+<h2 id="黑盒知识蒸馏"><a href="#黑盒知识蒸馏" class="headerlink" title="黑盒知识蒸馏"></a>黑盒知识蒸馏</h2><p>使用大模型生成数据，通过这些数据去微调更小的模型，来达到蒸馏的目的。缺点是蒸馏效率低，优点是实现简单。<br><img src="/image/deepseek/black.png" alt="approach"><br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># per_device_train_batch_size: 4 # 单次训练步骤中处理的样本数,</span></span><br><span class="line"><span class="comment"># gradient_accumulation_steps: 2 # 梯度累积步数，模拟更大的批量大小</span></span><br><span class="line"><span class="comment"># learning_rate: 1.0e-4 # 初始学习率，控制参数更新步长</span></span><br><span class="line"><span class="comment"># num_train_epochs: 1 # 训练遍历整个数据集的次数</span></span><br><span class="line"><span class="comment"># lr_scheduler_type: cosine</span></span><br><span class="line"><span class="comment"># warmup_ratio: 0.1 # 学习率预热的比例</span></span><br><span class="line"><span class="comment"># bf16: true # 启用bfloat16混合精度训练</span></span><br><span class="line"><span class="comment"># ddp_timeout: 180000000</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> datasets <span class="keyword">from</span> load_dataset</span><br><span class="line"></span><br><span class="line">ds = load_dataset(<span class="string">'/Users/liuyu/AkitaSummer/deepseek_learn/OpenThought-114k'</span>)</span><br><span class="line"></span><br><span class="line">ds = ds[<span class="string">'train'</span>]</span><br><span class="line"></span><br><span class="line">data = []</span><br><span class="line"><span class="keyword">for</span> item <span class="keyword">in</span> ds:</span><br><span class="line">    tmp = &#123;&#125;</span><br><span class="line">    system = item[<span class="string">'system'</span>]</span><br><span class="line">    conversations = item[<span class="string">'conversations'</span>]</span><br><span class="line">    tmp[<span class="string">'instruction'</span>] = system</span><br><span class="line">    tmp[<span class="string">'input'</span>] = conversations[<span class="number">0</span>][<span class="string">'value'</span>]</span><br><span class="line">    tmp[<span class="string">'output'</span>] = conversations[<span class="number">1</span>][<span class="string">'value'</span>]</span><br><span class="line">    data.append(tmp)</span><br></pre></td></tr></table></figure></p>
+<h2 id="白盒知识蒸馏"><a href="#白盒知识蒸馏" class="headerlink" title="白盒知识蒸馏"></a>白盒知识蒸馏</h2><p>获取学生模型和教师模型的输出概率分布（或者中间隐藏层的概率分布），通过kl散度将学生模型的概率分布向教师模型对齐。 下面主要介绍和测试白盒知识蒸馏： 白盒知识蒸馏主要在于模型分布的对齐，模型分布对齐主要依赖kl散度，对于kl散度的使用又有如下几种方式：</p>
+<ol>
+<li><p>前向kl散度。<br>也就是我们经常说的kl散度。<br>$$\hat{\mathrm{q}}=\mathrm{argmin}<em>\mathrm{q}\int</em>\mathrm{x}\mathrm{p(x)log}\frac{\mathrm{p(x)}}{\mathrm{q(x)}}\mathrm{dx}$$<br>p 为教师模型的概率分布，q 为学生模型的概率分布，<a href="https://arxiv.org/abs/2306.08543" target="_blank" rel="noopener">minillm</a>论文中提到前向 kl 散度可能会使学生模型高估教师模型中概率比较低的位置，结合公式来看，当 p 增大时，为了使得 kl 散度小，则 q 也需要增大，但是当 p 趋于0时，无论 q 取任何值， kl 散度都比较小，因为此时 $\mathrm{p(x)log}\frac{\mathrm{p(x)}}{\mathrm{q(x)}}$ 的大小主要受 p(x) 控制，这样起不到优化 q 分布的效果，可能会使q分布高估p分布中概率低的位置。 下图展示了前向 kl 散度的拟合情况，前向 kl 散度是一种均值搜索，更倾向于拟合多峰<br><img src="/image/deepseek/fkl.png" alt="approach"></p>
+</li>
+<li><p>反向kl散度。<br>为了缓解前向kl散度的缺点，提出了反向kl散度。<br>$$\mathrm{\hat{q}~=argmin_q~\int_x~q(x)log\frac{q(x)}{p(x)}~dx}$$<br>p 为教师模型的概率分布，q 为学生模型的概率分布，当 p 趋于零时，为了使 kl 散度小  q 也需趋于0。 minillm论文中说对于大模型的知识蒸馏，反向kl散度优于前向kl散度，但是也有其他论文说反向kl散度不一定比前向kl散度更优，实际选择中，可能要基于实验驱动。反向kl散度是一种模式搜索，更倾向于拟合单个峰 rkl<br><img src="/image/deepseek/rkl.png" alt="approach"></p>
+</li>
+<li><p>偏向前kl散度。<br>对学生模型的分布和教师模型的分布进行加权作为学生模型的分布。</p>
+</li>
+<li><p>偏向反kl散度。<br>对学生模型的分布和教师模型的分布进行加权作为教师模型的分布。</p>
+</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoModelForCausalLM, AutoTokenizer, DefaultDataCollator</span><br><span class="line"><span class="keyword">from</span> peft <span class="keyword">import</span> LoraConfig, get_peft_model, TaskType</span><br><span class="line"><span class="keyword">from</span> peft <span class="keyword">import</span> PeftModel</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"><span class="keyword">import</span> torch.nn.functional <span class="keyword">as</span> F</span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> Trainer, TrainingArguments</span><br><span class="line"><span class="keyword">from</span> dataset <span class="keyword">import</span> SFTDataset</span><br><span class="line"></span><br><span class="line"><span class="comment"># 计算前向kl散度</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">compute_fkl</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">        logits, </span></span></span><br><span class="line"><span class="function"><span class="params">        teacher_logits, </span></span></span><br><span class="line"><span class="function"><span class="params">        target, </span></span></span><br><span class="line"><span class="function"><span class="params">        padding_id,</span></span></span><br><span class="line"><span class="function"><span class="params">        reduction=<span class="string">"sum"</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">        temp = <span class="number">1.0</span>, </span></span></span><br><span class="line"><span class="function"><span class="params">        </span></span></span><br><span class="line"><span class="function"><span class="params">    )</span>:</span></span><br><span class="line">        logits = logits / temp</span><br><span class="line">        teacher_logits = teacher_logits / temp</span><br><span class="line"></span><br><span class="line">        log_probs = torch.log_softmax(logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        teacher_probs = torch.softmax(teacher_logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        teacher_log_probs = torch.log_softmax(teacher_logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        kl = (teacher_probs * (teacher_log_probs - log_probs)) </span><br><span class="line">        kl = kl.sum(<span class="number">-1</span>)</span><br><span class="line">        <span class="keyword">if</span> reduction == <span class="string">"sum"</span>:</span><br><span class="line">            pad_mask = target.eq(padding_id)</span><br><span class="line">            kl = kl.masked_fill_(pad_mask, <span class="number">0.0</span>)</span><br><span class="line">            kl = kl.sum()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> kl</span><br><span class="line"><span class="comment"># 计算反向kl散度</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">compute_rkl</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">        logits, </span></span></span><br><span class="line"><span class="function"><span class="params">        teacher_logits, </span></span></span><br><span class="line"><span class="function"><span class="params">        target, </span></span></span><br><span class="line"><span class="function"><span class="params">        padding_id,</span></span></span><br><span class="line"><span class="function"><span class="params">        reduction=<span class="string">"sum"</span>, </span></span></span><br><span class="line"><span class="function"><span class="params">        temp = <span class="number">1.0</span></span></span></span><br><span class="line"><span class="function"><span class="params">    )</span>:</span></span><br><span class="line">        logits = logits / temp</span><br><span class="line">        teacher_logits = teacher_logits / temp</span><br><span class="line"></span><br><span class="line">        probs = torch.softmax(logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        log_probs = torch.log_softmax(logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        teacher_log_probs = torch.log_softmax(teacher_logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        kl = (probs * (log_probs - teacher_log_probs))</span><br><span class="line">        kl = kl.sum(<span class="number">-1</span>)</span><br><span class="line">        <span class="keyword">if</span> reduction == <span class="string">"sum"</span>:</span><br><span class="line">            pad_mask = target.eq(padding_id)</span><br><span class="line">            kl = kl.masked_fill_(pad_mask, <span class="number">0.0</span>)</span><br><span class="line">            kl = kl.sum()</span><br><span class="line">        <span class="keyword">return</span> kl</span><br><span class="line"></span><br><span class="line"><span class="comment"># 计算偏向前kl散度</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">compute_skewed_fkl</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">        logits, </span></span></span><br><span class="line"><span class="function"><span class="params">        teacher_logits, </span></span></span><br><span class="line"><span class="function"><span class="params">        target, </span></span></span><br><span class="line"><span class="function"><span class="params">        padding_id, </span></span></span><br><span class="line"><span class="function"><span class="params">        reduction=<span class="string">"sum"</span>, </span></span></span><br><span class="line"><span class="function"><span class="params">        temp = <span class="number">1.0</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">        skew_lambda = <span class="number">0.1</span></span></span></span><br><span class="line"><span class="function"><span class="params">    )</span>:</span></span><br><span class="line">        logits = logits / temp</span><br><span class="line">        teacher_logits = teacher_logits / temp</span><br><span class="line"></span><br><span class="line">        probs = torch.softmax(logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        teacher_probs = torch.softmax(teacher_logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        mixed_probs = skew_lambda * teacher_probs + (<span class="number">1</span> - skew_lambda) * probs</span><br><span class="line">        mixed_log_probs = torch.log(mixed_probs)</span><br><span class="line">        teacher_log_probs = torch.log_softmax(teacher_logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">        kl = (teacher_probs * (teacher_log_probs - mixed_log_probs))</span><br><span class="line">        kl = kl.sum(<span class="number">-1</span>)</span><br><span class="line">        <span class="keyword">if</span> reduction == <span class="string">"sum"</span>:</span><br><span class="line">            pad_mask = target.eq(padding_id)</span><br><span class="line">            kl = kl.masked_fill_(pad_mask, <span class="number">0.0</span>)</span><br><span class="line">            kl = kl.sum()</span><br><span class="line"></span><br><span class="line">            </span><br><span class="line">        <span class="keyword">return</span> kl</span><br><span class="line"><span class="comment"># 计算偏向反kl散度    </span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">compute_skewed_rkl</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">    logits, </span></span></span><br><span class="line"><span class="function"><span class="params">    teacher_logits, </span></span></span><br><span class="line"><span class="function"><span class="params">    target,</span></span></span><br><span class="line"><span class="function"><span class="params">    padding_id,</span></span></span><br><span class="line"><span class="function"><span class="params">    reduction=<span class="string">"sum"</span>, </span></span></span><br><span class="line"><span class="function"><span class="params">    temp = <span class="number">1.0</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">    skew_lambda = <span class="number">0.1</span></span></span></span><br><span class="line"><span class="function"><span class="params">)</span>:</span></span><br><span class="line">    logits = logits / temp</span><br><span class="line">    teacher_logits = teacher_logits / temp</span><br><span class="line">    </span><br><span class="line">    probs = torch.softmax(logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">    teacher_probs = torch.softmax(teacher_logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">    mixed_probs = (<span class="number">1</span> - skew_lambda) * teacher_probs + skew_lambda * probs</span><br><span class="line">    mixed_log_probs = torch.log(mixed_probs)</span><br><span class="line">    log_probs = torch.log_softmax(logits, <span class="number">-1</span>, dtype=torch.float32)</span><br><span class="line">    kl = (probs * (log_probs - mixed_log_probs))</span><br><span class="line">    kl = kl.sum(<span class="number">-1</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> reduction == <span class="string">"sum"</span>:</span><br><span class="line">        pad_mask = target.eq(padding_id)</span><br><span class="line">        kl = kl.masked_fill_(pad_mask, <span class="number">0.0</span>)</span><br><span class="line">        kl = kl.sum()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> kl</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">KGTrainer</span><span class="params">(Trainer)</span>:</span></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">        self,</span></span></span><br><span class="line"><span class="function"><span class="params">        model = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        teacher_model = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        if_use_entropy = False,</span></span></span><br><span class="line"><span class="function"><span class="params">        args = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        data_collator = None, </span></span></span><br><span class="line"><span class="function"><span class="params">        train_dataset = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        eval_dataset = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        tokenizer = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        model_init = None, </span></span></span><br><span class="line"><span class="function"><span class="params">        compute_metrics = None, </span></span></span><br><span class="line"><span class="function"><span class="params">        callbacks = None,</span></span></span><br><span class="line"><span class="function"><span class="params">        optimizers = <span class="params">(None, None)</span>, </span></span></span><br><span class="line"><span class="function"><span class="params">        preprocess_logits_for_metrics = None,</span></span></span><br><span class="line"><span class="function"><span class="params">    )</span>:</span></span><br><span class="line">        super().__init__(</span><br><span class="line">            model,</span><br><span class="line">            args,</span><br><span class="line">            data_collator,</span><br><span class="line">            train_dataset,</span><br><span class="line">            eval_dataset,</span><br><span class="line">            tokenizer,</span><br><span class="line">            model_init,</span><br><span class="line">            compute_metrics,</span><br><span class="line">            callbacks,</span><br><span class="line">            optimizers,</span><br><span class="line">            preprocess_logits_for_metrics,</span><br><span class="line">        )</span><br><span class="line">        self.teacher_model = teacher_model</span><br><span class="line">        self.if_use_entropy = if_use_entropy</span><br><span class="line">        </span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">compute_loss</span><span class="params">(self, model, inputs, return_outputs=False)</span>:</span></span><br><span class="line">        </span><br><span class="line">        outputs = model(**inputs)</span><br><span class="line">        <span class="keyword">with</span> torch.no_grad():</span><br><span class="line">            teacher_outputs = self.teacher_model(**inputs)</span><br><span class="line">        </span><br><span class="line">        loss = outputs.loss</span><br><span class="line">        logits = outputs.logits</span><br><span class="line">        teacher_logits = teacher_outputs.logits</span><br><span class="line">        </span><br><span class="line">        <span class="comment"># 如果教师模型和学生模型输出形状不匹配，对学生模型进行padding或对教师模型进行截断</span></span><br><span class="line">        <span class="keyword">if</span> logits.shape[<span class="number">-1</span>] != teacher_logits.shape[<span class="number">-1</span>]:</span><br><span class="line">            <span class="comment"># gap = teacher_logits.shape[-1] - logits.shape[-1]</span></span><br><span class="line">            <span class="comment"># if gap &gt; 0:</span></span><br><span class="line">            <span class="comment">#     pad_logits = torch.zeros((logits.shape[0], logits.shape[1], gap)).to(logits.device)</span></span><br><span class="line">            <span class="comment">#     logits = torch.cat([logits, pad_logits], dim=-1)</span></span><br><span class="line">            </span><br><span class="line">            teacher_logits = teacher_logits[:, :, :logits.shape[<span class="number">-1</span>]]</span><br><span class="line">        </span><br><span class="line">        labels = inputs[<span class="string">'labels'</span>]</span><br><span class="line">        kl = compute_fkl(logits, teacher_logits, labels, padding_id=<span class="number">-100</span>, temp=<span class="number">2.0</span>)</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> self.if_use_entropy:</span><br><span class="line">            loss_total = <span class="number">0.5</span> * kl + <span class="number">0.5</span> * loss</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            loss_total = kl</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">return</span> (loss_total, outputs) <span class="keyword">if</span> return_outputs <span class="keyword">else</span> loss_total</span><br><span class="line">        </span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># 学生模型</span></span><br><span class="line">    model = AutoModelForCausalLM.from_pretrained(<span class="string">"Qwen2.5-0.5B-Instruct"</span>)</span><br><span class="line">    </span><br><span class="line">    lora_config = LoraConfig(</span><br><span class="line">    r=<span class="number">8</span>,  </span><br><span class="line">    lora_alpha=<span class="number">256</span>,  </span><br><span class="line">    target_modules=[<span class="string">"q_proj"</span>, <span class="string">"k_proj"</span>, <span class="string">"v_proj"</span>, <span class="string">"o_proj"</span>, <span class="string">"gate_proj"</span>, <span class="string">"up_proj"</span>, <span class="string">"down_proj"</span>],</span><br><span class="line">    lora_dropout=<span class="number">0.1</span>, </span><br><span class="line">    task_type=TaskType.CAUSAL_LM)</span><br><span class="line">    <span class="comment"># 使用lora方法训练</span></span><br><span class="line">    model = get_peft_model(model, lora_config)</span><br><span class="line">    model.cuda()</span><br><span class="line">    print(model.print_trainable_parameters())</span><br><span class="line">    </span><br><span class="line">    tokenizer = AutoTokenizer.from_pretrained(<span class="string">"Qwen2.5-0.5B-Instruct"</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># 教师模型，在给定数据上通过lora微调</span></span><br><span class="line">    teacher_model = AutoModelForCausalLM.from_pretrained(<span class="string">"Qwen2.5-7B-Instruct"</span>)</span><br><span class="line">    <span class="comment"># 是否加载lora模型</span></span><br><span class="line">    lora_path = <span class="string">'qwen2.5_7b/lora/sft'</span></span><br><span class="line">    teacher_model = PeftModel.from_pretrained(teacher_model, lora_path)</span><br><span class="line">    teacher_model.cuda()</span><br><span class="line">    teacher_model.eval()</span><br><span class="line">    </span><br><span class="line">    args = TrainingArguments(output_dir=<span class="string">'./results'</span>, </span><br><span class="line">                            num_train_epochs=<span class="number">10</span>, </span><br><span class="line">                            do_train=<span class="keyword">True</span>, </span><br><span class="line">                            per_device_train_batch_size=<span class="number">2</span>,</span><br><span class="line">                            gradient_accumulation_steps=<span class="number">16</span>,</span><br><span class="line">                            logging_steps=<span class="number">10</span>,</span><br><span class="line">                            report_to=<span class="string">'tensorboard'</span>,</span><br><span class="line">                            save_strategy=<span class="string">'epoch'</span>,</span><br><span class="line">                            save_total_limit=<span class="number">10</span>,</span><br><span class="line">                            bf16=<span class="keyword">True</span>,</span><br><span class="line">                            learning_rate=<span class="number">0.0005</span>,</span><br><span class="line">                            lr_scheduler_type=<span class="string">'cosine'</span>,</span><br><span class="line">                            dataloader_num_workers=<span class="number">8</span>,</span><br><span class="line">                            dataloader_pin_memory=<span class="keyword">True</span>)</span><br><span class="line">    data_collator = DefaultDataCollator()</span><br><span class="line">    dataset = SFTDataset(<span class="string">'data.json'</span>, tokenizer=tokenizer, max_seq_len=<span class="number">512</span>)</span><br><span class="line">    trainer = KGTrainer(model=model,</span><br><span class="line">                        teacher_model=teacher_model, </span><br><span class="line">                        if_use_entropy = <span class="keyword">True</span>,</span><br><span class="line">                        args=args, </span><br><span class="line">                        train_dataset=dataset, </span><br><span class="line">                        tokenizer=tokenizer, </span><br><span class="line">                        data_collator=data_collator)</span><br><span class="line">    <span class="comment"># 如果是初次训练resume_from_checkpoint为false，接着checkpoint继续训练，为True</span></span><br><span class="line">    trainer.train(resume_from_checkpoint=<span class="keyword">False</span>)</span><br><span class="line">    trainer.save_model(<span class="string">'./saves'</span>)</span><br><span class="line">    trainer.save_state()</span><br></pre></td></tr></table></figure>
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/DeepSeek/" rel="tag"># DeepSeek</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2024/07/21/ollama源码浅析/" rel="next" title="ollama源码浅析">
+                <i class="fa fa-chevron-left"></i> ollama源码浅析
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">26</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">39</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#LLM-相关原理快速入门"><span class="nav-number">2.</span> <span class="nav-text">LLM 相关原理快速入门</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#DeepSeek-R1-做了什么"><span class="nav-number">3.</span> <span class="nav-text">DeepSeek-R1 做了什么</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#DeepSeek-R1-Zero"><span class="nav-number">4.</span> <span class="nav-text">DeepSeek-R1-Zero</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#DeepSeek-R1"><span class="nav-number">5.</span> <span class="nav-text">DeepSeek-R1</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#蒸馏"><span class="nav-number">6.</span> <span class="nav-text">蒸馏</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#黑盒知识蒸馏"><span class="nav-number">6.1.</span> <span class="nav-text">黑盒知识蒸馏</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#白盒知识蒸馏"><span class="nav-number">6.2.</span> <span class="nav-text">白盒知识蒸馏</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2025</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
