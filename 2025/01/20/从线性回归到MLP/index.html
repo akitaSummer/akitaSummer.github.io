@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="线性模型模型搭建线性模型是最简单的数学模型，他的数学公式是下面这个:$$f(\vec{x})=\sum_{i=1}^{n}w_{i}x_{i}+b$$权重＋变量求和最后加上常量。 我们以一个地区房价的变动预测为例，他的参数可能有成本，利润，人数，收入等等可能与预测值有关系的参数，这些统计就是在做特征工程。 我们收集的数据可以表示为$$X=[\vec{X}{1},\vec{X}{2},\vec{X}">
+<meta name="keywords" content="machine learning,python">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从线性回归到MLP">
+<meta property="og:url" content="https://akitaSummer.github.io/2025/01/20/从线性回归到MLP/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="线性模型模型搭建线性模型是最简单的数学模型，他的数学公式是下面这个:$$f(\vec{x})=\sum_{i=1}^{n}w_{i}x_{i}+b$$权重＋变量求和最后加上常量。 我们以一个地区房价的变动预测为例，他的参数可能有成本，利润，人数，收入等等可能与预测值有关系的参数，这些统计就是在做特征工程。 我们收集的数据可以表示为$$X=[\vec{X}{1},\vec{X}{2},\vec{X}">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/machine-learning/cost-funtion.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/machine-learning/optimization.jpg">
+<meta property="og:image" content="https://akitasummer.github.io/image/machine-learning/linear-model.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/machine-learning/MLP.png">
+<meta property="og:updated_time" content="2025-06-27T18:47:06.209Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="从线性回归到MLP">
+<meta name="twitter:description" content="线性模型模型搭建线性模型是最简单的数学模型，他的数学公式是下面这个:$$f(\vec{x})=\sum_{i=1}^{n}w_{i}x_{i}+b$$权重＋变量求和最后加上常量。 我们以一个地区房价的变动预测为例，他的参数可能有成本，利润，人数，收入等等可能与预测值有关系的参数，这些统计就是在做特征工程。 我们收集的数据可以表示为$$X=[\vec{X}{1},\vec{X}{2},\vec{X}">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/machine-learning/cost-funtion.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2025/01/20/从线性回归到MLP/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>从线性回归到MLP | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2025/01/20/从线性回归到MLP/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">从线性回归到MLP
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2025-01-20 00:21:35" itemprop="dateCreated datePublished" datetime="2025-01-20T00:21:35+08:00">2025-01-20</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2025-06-28 02:47:06" itemprop="dateModified" datetime="2025-06-28T02:47:06+08:00">2025-06-28</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2025/01/20/从线性回归到MLP/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2025/01/20/从线性回归到MLP/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="线性模型"><a href="#线性模型" class="headerlink" title="线性模型"></a>线性模型</h1><h2 id="模型搭建"><a href="#模型搭建" class="headerlink" title="模型搭建"></a>模型搭建</h2><p>线性模型是最简单的数学模型，他的数学公式是下面这个:<br>$$f(\vec{x})=\sum_{i=1}^{n}w_{i}x_{i}+b$$<br>权重＋变量求和最后加上常量。</p>
+<p>我们以一个地区房价的变动预测为例，他的参数可能有成本，利润，人数，收入等等可能与预测值有关系的参数，这些统计就是在做特征工程。</p>
+<p>我们收集的数据可以表示为<br>$$X=[\vec{X}<em>{1},\vec{X}</em>{2},\vec{X}<em>{3},\ldots\vec{X}</em>{N}]^{T}$$<br>$$Y=[\vec{Y}<em>{1},\vec{Y}</em>{2},\vec{Y}<em>{3},\ldots\vec{Y}</em>{N}]^{T}$$<br>其中X是特征计算，Y是房价，N是数据数目。</p>
+<p>接下来我们就是训练，通过调整参数使得根据 $x$ 计算出来的 $f(\vec{x})$ 与真实的 $Y$ 尽可能的差距小。</p>
+<p>这里有个需要注意的地方，我们知道房价的值是不能小于0的，这时候我们需要对模型进行转化 (在深度学习里叫激活函数) ：<br>$$f(\overrightarrow{x})=\max(0,\sum_{i=1}^{n}w_{i}x_{i}+b)$$<br>其中这个 $\max(x,y)$ 又叫 <a href="https://zhuanlan.zhihu.com/p/428448728" target="_blank" rel="noopener">ReLU 函数</a>，当然也有别的函数，比如结果只在 0~1 之间的 <a href="https://zhuanlan.zhihu.com/p/424858561" target="_blank" rel="noopener">Sigmoid 函数</a>等等，这里就不多做介绍了</p>
+<h2 id="损失函数"><a href="#损失函数" class="headerlink" title="损失函数"></a>损失函数</h2><p>损失函数通常用于计算模型对单个样本预测结果的误差，房价例子中的损失函数可以表示为:<br>$$C(\vec{w},b,X,Y)=\frac{1}{N}\sum_{i=1}^{N}(y_{i}-\max(0,f(\vec{x}_{i},\vec{w},b)))^{2}$$<br>我们通过计算模型使用的 ReLU 函数计算出的结果，与真实值相减的平方求平均数，让他尽可能的小，通过这种形式，讲一个优化问题，转换为了数学问题。</p>
+<p>现在，我们的目标就变成了，调整 $\vec{w}$ 和 $b$ ，让损失函数结果尽可能小。</p>
+<p>这里会引出一个经典问题，过拟合，因为学习实际上他并不是一个真实的数学优化问题，如果过拟合，会导致泛化能力变弱，这是需要注意的，这也是机器学习和数学优化的重要区别。</p>
+<p><img src="/image/machine-learning/cost-funtion.png" alt="Cost function"></p>
+<h2 id="如何优化"><a href="#如何优化" class="headerlink" title="如何优化"></a>如何优化</h2><p>这里推荐 Stephen Boyd 的 <a href="https://www.youtube.com/watch?v=kV1ru-Inzl4" target="_blank" rel="noopener">Convex Optimization</a>，这里只做一些简单的介绍，一般优化分为两种，一种是梯度性优化，另一种是对偶性优化（一般是转成更好优化的问题去优化）。这里我们主要介绍在我们这个模型中用到的梯度性下降优化。</p>
+<p>梯度就是这个函数的不同变量倒数组成的变量。</p>
+<p>$$[\frac{\partial f}{\partial x_{1}},\frac{\partial f}{\partial x_{2}}\cdots\frac{\partial f}{\partial x_{n}}]$$</p>
+<p>梯度下降你可以理解为，我们有个函数，我们通过寻找他变量中各个方向上下降最快的方向去移动，从而拿到他的全局最低点。</p>
+<p><img src="/image/machine-learning/optimization.jpg" alt="optimization"></p>
+<p>比如左图，当导数为0时，可以拿到他的最小值，这个优化的前提是这个函数是凸函数。</p>
+<p>如果出现右图这种不是凸函数，我们可能需要通过修改步长（随机扰动），从而跳过局部最优解，找到全局最优解。非凸最优解问题在数学上是一个比较复杂的事情，我们可以招一个近似最优解来解决。</p>
+<h2 id="链式法则"><a href="#链式法则" class="headerlink" title="链式法则"></a>链式法则</h2><p>知道了优化方法后，我们下一步就是要求梯度，也就是求偏导。这里介绍一下大学高数里的链式法则，他可以把复杂的求导化简。</p>
+<p>$$y(x)=f(g(x))$$</p>
+<p>$$y^{\prime}(x)=f^{\prime}(g(x))\cdot g^{\prime}(x)$$</p>
+<p>这里帮大家回忆一下这个证明<br>$$y^{\prime}(x)=\lim_{\Delta x\to0}\frac{f(g(x+\Delta x))-f(g(x))}{\Delta x}$$<br>$$=\lim_{\Delta x\to0}\frac{f(g(x)+\Delta y)-f(g(x))}{\Delta x}$$<br>$$=\lim_{\Delta x\to0}\frac{f(g(x)+\Delta g)-f(g(x))}{\Delta g}\cdot\frac{\Delta g}{\Delta x}$$<br>$$=f^{\prime}(g(x))\cdot g^{\prime}(x)$$<br>$$let:\Delta g=g(x+\Delta x)-g(x))$$<br>$$g(x+\Delta x)=g(x)+\Delta g$$</p>
+<p>有了这个后，我们可以看链式法则在向量上的推广，假设我们有个方程组:<br>$$\vec{f}(\vec{x})\Rightarrow\begin{cases}<br>f_{1}(\overrightarrow{x})=ax_{1}+bx_{2}^{2}+cx_{3}^{3} \<br>f_{2}(\overrightarrow{x})=dx_{1}+\sin x_{2} \<br>f_{2}(\overrightarrow{x})=\cdots x_{1}+\cdots x_{2} &amp;<br>\end{cases}$$</p>
+<p>他的其中一个函数的梯度就是:<br>$$[\frac{\partial f_{1}}{\partial x_{1}},\frac{\partial f_{1}}{\partial x_{1}},\frac{\partial f_{1}}{\partial x_{3}}]$$</p>
+<p>整体梯度 Jacobi 矩阵就是:<br>$$[<br>\begin{array}<br>{c}\frac{\partial f_{1}}{\partial x_{1}},\frac{\partial f_{1}}{\partial x_{2}},\frac{\partial f_{1}}{\partial x_{3}} \<br>\frac{\partial f_{2}}{\partial x_{1}},\frac{\partial f_{2}}{\partial x_{2}},\frac{\partial f_{2}}{\partial x_{3}} \<br>\frac{\partial f_{3}}{\partial x_{1}},\frac{\partial f_{3}}{\partial x_{1}},\frac{\partial f_{3}}{\partial x_{3}}<br>\end{array}]$$<br>中间的计算，可以参考 <a href="https://explained.ai/matrix-calculus/" target="_blank" rel="noopener">The Matrix Calculus You Need For Deep Learning</a> 这本小书，里面介绍了深度学习需要的矩阵计算的知识。结果就是：<br>$$\frac{\partial \vec{f}(\overrightarrow{g}(\overrightarrow{x}))}{\partial \overrightarrow{x}}=\frac{\partial \overrightarrow{f}}{\partial \overrightarrow{g}}\cdot\frac{\partial \overrightarrow{g}}{\partial \overrightarrow{x}}$$<br>其中<br>$$f(\overrightarrow{x})\Rightarrow<br>\begin{cases}<br>g_{1}(\overrightarrow{x}) \<br>g_{2}(g_{1}(\overrightarrow{x})) \<br>g_{3}(g_{2}(\overrightarrow{x})) &amp;<br>\end{cases}$$<br>可以得到<br>$$\frac{\partial f(\overrightarrow{x})}{\partial\overrightarrow{x}}=\frac{\partial g_{3}}{\partial g_{2}}\cdot\frac{\partial g_{2}}{\partial g_{1}}\cdot\frac{\partial g_{1}}{\partial\overrightarrow{x}}$$</p>
+<h2 id="解决问题"><a href="#解决问题" class="headerlink" title="解决问题"></a>解决问题</h2><p>有了以上知识，我们可以回到我们之前的房价问题上来解决它了。我们的需求是将损失函数最小化：<br>$$C(\vec{w},b,X,Y)=\frac{1}{N}\sum_{i=1}^{N}(y_{i}-\max(0,f(\vec{x}<em>{i},\vec{w},b)))^{2}$$<br>我们可以将损失函数转化为<br>$$C(\vec{w},b,X,Y)\Rightarrow\begin{cases}<br>u(\overrightarrow{w},\overrightarrow{x},b) &amp; =\max(0,\overrightarrow{w}\overrightarrow{x}</em>{i}+b) \<br>v(y,u) &amp; =y-u \<br>c(v) &amp; =\frac{1}{N}\sum_{i=1}^{N}v^{2} &amp;<br>\end{cases}$$<br>接下来我们一层一层求偏导<br>$$\frac{\partial u}{\partial\overrightarrow{w}}=<br>\begin{cases}<br>\overrightarrow{0}^{T} &amp; \overrightarrow{w}\overrightarrow{x_{i}}+b\leq0 \<br>\overrightarrow{x} &amp; \overrightarrow{w}\overrightarrow{x_{i}}+b&gt;0 &amp;<br>\end{cases}$$<br>$$\frac{\partial v}{\partial\vec{w}}=\frac{\partial v}{\partial u}\cdot\frac{\partial u}{\partial\vec{w}}=(0-1)\frac{\partial u}{\partial\vec{w}}=-\frac{\partial u}{\partial\vec{w}}$$<br>$$\frac{\partial c}{\partial\vec{w}}=\frac{\partial}{\partial\vec{w}}\frac{1}{N}\sum_{i=1}^{N}v^{2}=\frac{1}{N}\sum_{i=1}^{N}\frac{\partial}{\partial\vec{w}}v^{2}=\frac{1}{N}\sum_{i=1}^{N}2v\frac{\partial v}{\partial\vec{w}}$$</p>
+<p>到了最外层后，我们就可以把它们整合起来了<br>$$\frac{\partial C}{\partial\vec{w}}=\frac{\partial}{\partial\vec{w}}\frac{1}{N}\sum_{i=1}^{N}v^{2}=\frac{1}{N}\sum_{i=1}^{N}\frac{\partial}{\partial\vec{w}}v^{2}=\frac{1}{N}\sum_{i=1}^{N}2v\frac{\partial v}{\partial\vec{w}}=\frac{1}{N}\sum_{i=1}^{N}<br>\begin{cases}<br>\vec{0}^{T},(\vec{w}\vec{x}<em>{i}+b\leq0) \<br>-2v\vec{x}^{T}(\vec{w}\vec{x}</em>{i}+b&gt;0) &amp;<br>\end{cases}=<br>\begin{cases}<br>\vec{0}^{T},(\vec{w}\vec{x}<em>{i}+b\leq0) \<br>\frac{2}{N}\sum</em>{i=1}^{N}(\overrightarrow{w}\cdot\overrightarrow{x}<em>{i}+b-y</em>{i})x_{i}^{T} &amp;<br>\end{cases}=<br>\begin{cases}<br>\vec{0}^{T},(\vec{w}\vec{x}<em>{i}+b\leq0) \<br>\frac{2}{N}\sum</em>{i=1}^{N}e_{i}x_{i}^{T} &amp;<br>\end{cases}$$</p>
+<p>其中 $e_{i} = \overrightarrow{w}\cdot\overrightarrow{x}<em>{i}+b-y</em>{i}$ 是误差函数</p>
+<p>这样就可以得到我们的算法了：</p>
+<ul>
+<li>我们先随机取一个随机权重 $\vec{w}_{0}^{T}$ ，查看结果，如果打到可接受范围则结束，否则下一步</li>
+<li>计算梯度 $\frac{2}{N}\sum_{i=1}^{N}e_{i}x_{i}^{T}$</li>
+<li>得到新权重 $\vec{w}<em>{1}^{T} = \vec{w}</em>{0}^{T} - \frac{2}{N}\sum_{i=1}^{N}e_{i}x_{i}^{T}\cdot\eta$</li>
+</ul>
+<h2 id="Coding"><a href="#Coding" class="headerlink" title="Coding"></a>Coding</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyLinearRegression</span>:</span></span><br><span class="line">    <span class="comment"># 学习率 迭代次数 激活函数</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, learning_rate=<span class="number">0.01</span>, n_iterations=<span class="number">1000</span>, activation=None)</span>:</span></span><br><span class="line">        self.learning_rate = np.float64(learning_rate)</span><br><span class="line">        self.n_iterations = n_iterations</span><br><span class="line">        self.weights = <span class="keyword">None</span></span><br><span class="line">        self.bias = <span class="keyword">None</span></span><br><span class="line">        self.activation = activation</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_relu</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> np.maximum(<span class="number">0</span>, x)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_relu_derivative</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> (x &gt; <span class="number">0</span>).astype(float)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_sigmoid</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span> / (<span class="number">1</span> + np.exp(-x))</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_sigmoid_derivative</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        s = self._sigmoid(x)</span><br><span class="line">        <span class="keyword">return</span> s * (<span class="number">1</span> - s)</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_apply_activation</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> self.activation == <span class="string">'relu'</span>:</span><br><span class="line">            <span class="keyword">return</span> self.relu(x)</span><br><span class="line">        <span class="keyword">elif</span> self.activation == <span class="string">'sigmoid'</span>:</span><br><span class="line">            <span class="keyword">return</span> self.sigmoid(x)</span><br><span class="line">        <span class="keyword">return</span> x  <span class="comment"># No activation</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_apply_activation_derivative</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> self.activation == <span class="string">'relu'</span>:</span><br><span class="line">            <span class="keyword">return</span> self.relu_derivative(x)</span><br><span class="line">        <span class="keyword">elif</span> self.activation == <span class="string">'sigmoid'</span>:</span><br><span class="line">            <span class="keyword">return</span> self.sigmoid_derivative(x)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span> <span class="comment"># Derivative is 1 when no activation</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">fix</span><span class="params">(self, X, y)</span>:</span></span><br><span class="line">        n_samples, n_features = X.shape</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 初始随机权重</span></span><br><span class="line">        self.weights = np.random.randn(n_features).astype(np.float64) * <span class="number">0.01</span></span><br><span class="line">        self.bias = np.float64(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 退出阈值，连续五次小于 1e-5</span></span><br><span class="line">        prev_loss = float(<span class="string">'inf'</span>)</span><br><span class="line">        patience = <span class="number">5</span></span><br><span class="line">        min_change = <span class="number">1e-5</span></span><br><span class="line">        patience_counter = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> _ <span class="keyword">in</span> range(self.n_iterations):</span><br><span class="line">            linear_output = np.dot(X, self.weights) + self.bias</span><br><span class="line">            y_predicted = self.apply_activation(linear_output)</span><br><span class="line">            </span><br><span class="line">            activation_derivative = self.apply_activation_derivative(linear_output)</span><br><span class="line">            diff = y_predicted - y</span><br><span class="line"></span><br><span class="line">            <span class="comment"># w 和 b 的梯度</span></span><br><span class="line">            dw = np.float64(<span class="number">1</span>/n_samples) * np.dot(X.T, (diff * activation_derivative))</span><br><span class="line">            db = np.float64(<span class="number">1</span>/n_samples) * np.sum(diff * activation_derivative)</span><br><span class="line"></span><br><span class="line">            <span class="comment"># 设置个范围，不要变化过大</span></span><br><span class="line">            clip_threshold = <span class="number">2.0</span></span><br><span class="line">            dw = np.clip(dw, -clip_threshold, clip_threshold)</span><br><span class="line">            db = np.clip(db, -clip_threshold, clip_threshold)</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> (np.isnan(dw).any() <span class="keyword">or</span> np.isnan(db)):  </span><br><span class="line">                self.weights -= self.learning_rate * dw</span><br><span class="line">                self.bias -= self.learning_rate * db</span><br><span class="line"></span><br><span class="line">            current_loss = np.mean(y_predicted - y) ** <span class="number">2</span></span><br><span class="line">            <span class="comment"># 小于阈值就结束</span></span><br><span class="line">            <span class="keyword">if</span> abs(prev_loss - current_loss) &lt; min_change:</span><br><span class="line">                patience_counter += <span class="number">1</span></span><br><span class="line">                <span class="keyword">if</span> patience_counter &gt;= patience:</span><br><span class="line">                    <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                patience_counter = <span class="number">0</span></span><br><span class="line">            prev_loss = current_loss</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">predict</span><span class="params">(self, X)</span>:</span></span><br><span class="line">        linear_output = np.dot(X, self.weights) + self.bias</span><br><span class="line">        <span class="keyword">return</span> self.apply_activation(linear_output)</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">score</span><span class="params">(self, X, y)</span>:</span></span><br><span class="line">        y_pred = self.predict(X)</span><br><span class="line">        ss_total = np.sum((y - y.mean()) ** <span class="number">2</span>)</span><br><span class="line">        ss_residual = np.sum((y - y_pred) ** <span class="number">2</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span> - (ss_residual / ss_total)</span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 计算用</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"><span class="comment"># 数据分析用</span></span><br><span class="line"><span class="keyword">import</span> pands <span class="keyword">as</span> pd</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> sklearn.model_selection <span class="keyword">import</span> train_test_split</span><br><span class="line"><span class="keyword">from</span> sklearn.linear_model <span class="keyword">import</span> LinearRegression</span><br><span class="line"><span class="keyword">from</span> LinearModel <span class="keyword">import</span> MyLinearRegression</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    <span class="comment"># load data</span></span><br><span class="line">    df = pd.read_csv(<span class="string">'California_Houses.csv'</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 拆分</span></span><br><span class="line">    X = df.drop(<span class="string">'Median_House_Value'</span>, axis=<span class="number">1</span>)</span><br><span class="line">    y = df.drop[<span class="string">'Median_House_Value'</span>]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 训练集，测试集</span></span><br><span class="line">    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="number">0.2</span>, random_state=<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 先用别人的模型跑下</span></span><br><span class="line">    model = LinearRegression()</span><br><span class="line">    model.fit(X_train, y_train)</span><br><span class="line">    print(<span class="string">"R-squared score: "</span>, model.score(X_test, y_test))</span><br><span class="line"></span><br><span class="line">    myModel = MyLinearRegression(learning_rate=<span class="number">0.001</span>, n_iterations=<span class="number">10000</span>, activation=<span class="string">'relu'</span>)</span><br><span class="line">    myModel.fit(X_train, y_train)</span><br><span class="line">    print(<span class="string">"R-squared score: "</span>, model.score(X_test, y_test))</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 尝试优化下模型</span></span><br><span class="line">    <span class="comment"># 先看下分布图</span></span><br><span class="line">    <span class="comment"># numerical_columns_columns_coltypes(include=[`float64',"int64']).columns</span></span><br><span class="line">    <span class="comment"># num_columns_len(numerical_columns)</span></span><br><span class="line">    <span class="comment"># num_rows = (num_columns // 3)+(1 if num_columns % 3 !=0 else 0)</span></span><br><span class="line">    <span class="comment"># num_cols = 3</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># plt.figure(figsize=(15, 6 * num_rows))</span></span><br><span class="line">    <span class="comment"># for i, column in enumerate(num_columns, 1):</span></span><br><span class="line">    <span class="comment">#     plt.subplot(num_rows, num_cols, i)</span></span><br><span class="line">    <span class="comment">#     sns.histplot(df[column], kde=True)</span></span><br><span class="line">    <span class="comment">#     plt.title(f'Distribution of &#123;column&#125;')</span></span><br><span class="line">    <span class="comment"># plt.tight_layout()</span></span><br><span class="line">    <span class="comment"># plt.show()</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    df[<span class="string">'Distance_to_BigCty'</span>] = np.min(df[<span class="string">'Distance_to_LA'</span>,<span class="string">'Distance_to_SanDiego'</span>])</span><br><span class="line"></span><br><span class="line">    df[<span class="string">'Bedroom_per_household'</span>] = df[<span class="string">'Households'</span>] / df[<span class="string">'Households'</span>]</span><br><span class="line"></span><br><span class="line">    df[<span class="string">'Median_House_Value'</span>] = np.log(df[<span class="string">'Median_House_Value'</span>])</span><br><span class="line">    df[<span class="string">'Median_Income'</span>] = np.log(df[<span class="string">'Median_Income'</span>])</span><br><span class="line">    df[<span class="string">'Distance_to_coast'</span>] = np.log(df[<span class="string">'Distance_to_coast'</span>])</span><br><span class="line">    df[<span class="string">'Bedroom_per_household'</span>] = np.log(df[<span class="string">'Bedroom_per_household'</span>])</span><br><span class="line"></span><br><span class="line">    newX = df.drop(<span class="string">'Median_House_Value'</span>, axis=<span class="number">1</span>)</span><br><span class="line">    new_y = df.drop[<span class="string">'Median_House_Value'</span>]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 训练集，测试集</span></span><br><span class="line">    new_X_train, new_X_test, new_y_train, new_y_test = train_test_split(newX, new_y, test_size=<span class="number">0.2</span>, random_state=<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line">    model = LinearRegression()</span><br><span class="line">    model.fit(new_X_train, new_y_train)</span><br><span class="line">    print(<span class="string">"R-squared score: "</span>, model.score(new_X_test, new_y_test))</span><br></pre></td></tr></table></figure>
+<!-- 
+# 决策树
+
+假设我们有个贷款是否能收回的一个场景，我们有以下数据
+
+$$x=[employed,revenue,student,\ldots,age]^{T}$$
+
+$$X=[\vec{x}_{1},\vec{x}_{2},\vec{x}_{3},\ldots\vec{x}_{n}]^{T}$$
+
+$$Y=[\vec{y}_{1},\vec{y}_{2},\vec{y}_{3},\ldots\vec{y}_{n}]^{T}$$
+
+通过训练一棵树，来预测用户贷款是否能还款，即使 $f(\vec{x})$ 尽量逼近 $Y$ 。
+
+![Decision Tree](/image/machine-learning/decision-tree.png)
+
+与线性模型不同的点在于，每一个节点如何构建下一个节点跟线性模型调权重有非常大的不同。
+
+
+## 熵和信息增益
+
+熵是用来描述系统的混乱程度，即不确定性。在机器学期中分类中说，熵越大即这个类别的不确定性更大，反之越小。当 p=0 或 p=1 时，H(p)=0,随机变量完全没有不确定性，当p=0.5时，H(p)=1,此时随机变量的不确定性最大
+
+![entropy](/image/machine-learning/entropy.png)
+
+$$H(X)=\sum_{i=1}^{n}p(x_{i})\:I(x_{i})=-\sum_{i=1}^{n}p(x_{i})\log_{2}p(x_{i})$$
+
+### 哈弗曼编码
+
+假设我们的哈弗曼编码只有四个字母，A(00), B(01), C(10), D(11)，假设，每个字母的出现率是 P(A)= 50%  P(B)= 25%  P(C)= 12.5%  P(D)= 12.5%，则这个系统的熵为 H = 1.75，而我们用了 2bit 来表示。
+
+但是如果我们的编码用的是 A(0), B(10), C(110), D(111)，那他的平均 bit = 1 * 0.5 + 2 * 0.25 + 3 * 0.125 + 3 * 0.125 = 1.75 bit
+
+这里例子表示了，如果系统的熵越低，实际上编码数越低。
+
+### 信息增益
+
+通过刚才的例子我们需要做的是，通过不断地增加节点，让子节点的熵降低，从而表示这个树信息越多。 -->
+<h1 id="MLP"><a href="#MLP" class="headerlink" title="MLP"></a>MLP</h1><p>刚才所讲的线性模型，如果用图画出来就是这样</p>
+<p><img src="/image/machine-learning/linear-model.png" alt="Linear model"></p>
+<p>数学公式是下面这个:<br>$$f(\vec{x})=\sum_{i=1}^{n}w_{i}x_{i}+b$$</p>
+<p>当我们把很多线性模型，添加激活函数，组合在一起，就成了一个多层感知机，也就是MLP</p>
+<p><img src="/image/machine-learning/MLP.png" alt="MLP"></p>
+<p>数学公式是下面这个:</p>
+<p>$$f(\vec{x})=\sum_{j=1}^{n}activation_{j}(\sum_{i=1}^{n}w_{i}x_{i}+b)$$</p>
+<p>其中的activation就是我们的激活函数，可以使RELU，或者sigmoid等等，如果没有激活函数，那么MLP就是一个超大型的线性函数而已，正是因为激活函数，才能让他拥有魔法。</p>
+<p>推荐一个🌰，<a href="https://www.bilibili.com/video/BV1bx411M7Zx/?spm_id_from=333.1387.collection.video_card.click&amp;vd_source=1c9c4de6b1ffda02913fc889a72af206" target="_blank" rel="noopener">识别手写数字</a>。</p>
+<h2 id="建立数学模型"><a href="#建立数学模型" class="headerlink" title="建立数学模型"></a>建立数学模型</h2><p>参考视频，我们要将这个模型先转化为数学问题，他有4层节点，我们可以从左到右设为$\overrightarrow{y_{0}}$,$\overrightarrow{y_{1}}$,$\overrightarrow{y_{2}}$,$\overrightarrow{y_{3}}$</p>
+<p>我们选用Sigmoid作为激活函数，他的数学描述为：</p>
+<p>$$\begin{cases}<br>\vec{y}_3 = Sigmoid \left( \vec{w}_2 \cdot \vec{y}_2 + \vec{b}_2 \right) \<br>\vec{y}_2 = Sigmoid \left( \vec{w}_1 \cdot \vec{y}_1 + \vec{b}_1 \right) \<br>\vec{y}_1 = Sigmoid \left( \vec{w}_0 \cdot \vec{y}_0 + \vec{b}_0 \right) &amp;<br>\end{cases}$$</p>
+<p>接下来我们需要优化这个数学模型，因此我们需要一个损失函数</p>
+<p>$$cost = (\overrightarrow{y}_3 - \overrightarrow{y})^2$$</p>
+<p>我们要通过调整$\overrightarrow{w}/\overrightarrow{b}$来使最终的损失函数达到最小</p>
+<p>我们先回到线性模型中，如果只有一个简单的线性方程$y=Sigmoid(w\cdot x + b)$，那我们其实只用对w和b求偏导，但是我们这里有$\vec{w}_2$,$\vec{w}_1$,$\vec{w}_0$,$\vec{b}_2$,$\vec{b}_1$,$\vec{b}_0$六个变量，这个时候就要用到反向传播</p>
+<h2 id="反向传播"><a href="#反向传播" class="headerlink" title="反向传播"></a>反向传播</h2><p>反向传播实际上就是基于链式法则，在刚在的例子中，我们以最终损失函为例，将其可拆分为</p>
+<p>$$\begin{cases}<br>C=\frac{1}{N}\sum_{i=1}^{N}\vec{v} \<br>\vec{v} = (\overrightarrow{y}_3 - \overrightarrow{y})^2 \<br>\vec{y}_3 = Sigmoid(\vec{a}_3) \<br>\vec{a}_3 = (\vec{w}_2 \cdot \vec{y}_2 + \vec{b}_2) \<br>…<br>\end{cases}$$</p>
+<p>当我们求出$[\frac{\partial C}{\partial \vec{w}<em>{0}},\frac{\partial C}{\partial \vec{w}</em>{1}},\frac{\partial C}{\partial \vec{w}<em>{2}},\frac{\partial C}{\partial \vec{b}</em>{0}},\frac{\partial C}{\partial \vec{b}<em>{1}},\frac{\partial C}{\partial \vec{b}</em>{2}}]$梯度后，我们就可以使用梯度下降来不断地训练</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/machine-learning/" rel="tag"># machine learning</a>
+          
+            <a href="/tags/python/" rel="tag"># python</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2025/01/20/DeepSeek/" rel="next" title="DeepSeek 论文浅析">
+                <i class="fa fa-chevron-left"></i> DeepSeek 论文浅析
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">28</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">41</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#线性模型"><span class="nav-number">1.</span> <span class="nav-text">线性模型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#模型搭建"><span class="nav-number">1.1.</span> <span class="nav-text">模型搭建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#损失函数"><span class="nav-number">1.2.</span> <span class="nav-text">损失函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何优化"><span class="nav-number">1.3.</span> <span class="nav-text">如何优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#链式法则"><span class="nav-number">1.4.</span> <span class="nav-text">链式法则</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决问题"><span class="nav-number">1.5.</span> <span class="nav-text">解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Coding"><span class="nav-number">1.6.</span> <span class="nav-text">Coding</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MLP"><span class="nav-number">2.</span> <span class="nav-text">MLP</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#建立数学模型"><span class="nav-number">2.1.</span> <span class="nav-text">建立数学模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#反向传播"><span class="nav-number">2.2.</span> <span class="nav-text">反向传播</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2025</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
