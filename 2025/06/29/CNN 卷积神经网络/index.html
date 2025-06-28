@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="CNN 的由来MLP 有什么问题MLP固然很美好，但是他的参数计算是相乘的，随着入参和隐藏层变多，会无法训练，比如我们要识别一张1000像素的手写图片，可能我们需要的参数就有 1000  100  100 * 10，随着参数增加，你需要的训练数据也变得不断地增加。 因此我们需要有更好的算法，来实现要求下降，还能适配特定领域问题。 图片特点 locality 局部性：  依赖性仅限于具有特征的小区域">
+<meta name="keywords" content="machine learning,python,CNN">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CNN 卷积神经网络">
+<meta property="og:url" content="https://akitaSummer.github.io/2025/06/29/CNN 卷积神经网络/index.html">
+<meta property="og:site_name" content="Akita Summer&#39;s Blog">
+<meta property="og:description" content="CNN 的由来MLP 有什么问题MLP固然很美好，但是他的参数计算是相乘的，随着入参和隐藏层变多，会无法训练，比如我们要识别一张1000像素的手写图片，可能我们需要的参数就有 1000  100  100 * 10，随着参数增加，你需要的训练数据也变得不断地增加。 因此我们需要有更好的算法，来实现要求下降，还能适配特定领域问题。 图片特点 locality 局部性：  依赖性仅限于具有特征的小区域">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/locality.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/translation-invariation.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/convolution_1.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/convolution_2.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/convolution_3.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/convolution_4.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/pooling.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/lenet.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/padding.png">
+<meta property="og:image" content="https://akitasummer.github.io/image/cnn/stride.png">
+<meta property="og:updated_time" content="2025-06-28T20:00:48.573Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CNN 卷积神经网络">
+<meta name="twitter:description" content="CNN 的由来MLP 有什么问题MLP固然很美好，但是他的参数计算是相乘的，随着入参和隐藏层变多，会无法训练，比如我们要识别一张1000像素的手写图片，可能我们需要的参数就有 1000  100  100 * 10，随着参数增加，你需要的训练数据也变得不断地增加。 因此我们需要有更好的算法，来实现要求下降，还能适配特定领域问题。 图片特点 locality 局部性：  依赖性仅限于具有特征的小区域">
+<meta name="twitter:image" content="https://akitasummer.github.io/image/cnn/locality.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://akitaSummer.github.io/2025/06/29/CNN 卷积神经网络/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>CNN 卷积神经网络 | Akita Summer's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"><a href="https://github.com/akitaSummer" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Akita Summer's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://akitaSummer.github.io/2025/06/29/CNN 卷积神经网络/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Akita Summer">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Akita Summer's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">CNN 卷积神经网络
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2025-06-29 03:02:11 / 修改时间：04:00:48" itemprop="dateCreated datePublished" datetime="2025-06-29T03:02:11+08:00">2025-06-29</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/学习笔记/" itemprop="url" rel="index"><span itemprop="name">学习笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <a href="/2025/06/29/CNN 卷积神经网络/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count gitment-comments-count" data-xid="/2025/06/29/CNN 卷积神经网络/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="CNN-的由来"><a href="#CNN-的由来" class="headerlink" title="CNN 的由来"></a>CNN 的由来</h1><h2 id="MLP-有什么问题"><a href="#MLP-有什么问题" class="headerlink" title="MLP 有什么问题"></a>MLP 有什么问题</h2><p>MLP固然很美好，但是他的参数计算是相乘的，随着入参和隐藏层变多，会无法训练，比如我们要识别一张1000像素的手写图片，可能我们需要的参数就有 1000 <em> 100 </em> 100 * 10，随着参数增加，你需要的训练数据也变得不断地增加。</p>
+<p>因此我们需要有更好的算法，来实现要求下降，还能适配特定领域问题。</p>
+<h2 id="图片特点"><a href="#图片特点" class="headerlink" title="图片特点"></a>图片特点</h2><ul>
+<li><p>locality 局部性：<br>  依赖性仅限于具有特征的小区域，举个例子，比如下图，鼻子的特征仅在蓝色正方形的像素间有关系，与红色矩形中的像素无关，<br>  <img src="/image/cnn/locality.png" alt="locality"></p>
+</li>
+<li><p>translation invariation 平移不变性<br>  举个例子，比如下图，这个鸟无论在左上还是在右下，他还是鸟，不影响被识别。<br>  <img src="/image/cnn/translation-invariation.png" alt="translation invariation"></p>
+</li>
+</ul>
+<p>如果我们的模型能够抓住这两个特点，其他无关的不需要进行全连接，即可优化。</p>
+<h1 id="聚焦特点"><a href="#聚焦特点" class="headerlink" title="聚焦特点"></a>聚焦特点</h1><h2 id="Convolution-卷积"><a href="#Convolution-卷积" class="headerlink" title="Convolution 卷积"></a>Convolution 卷积</h2><p>卷积能完美的匹配 locality 和 translation invariation，我们来复习一下卷积的计算：</p>
+<p><img src="/image/cnn/convolution_1.png" alt="Convolution_1"><br><img src="/image/cnn/convolution_2.png" alt="Convolution_2"><br><img src="/image/cnn/convolution_3.png" alt="Convolution_3"><br><img src="/image/cnn/convolution_4.png" alt="Convolution_4"></p>
+<p>其中卷积核就是用于识别的特征提取。</p>
+<h2 id="Pooling-layer-池化"><a href="#Pooling-layer-池化" class="headerlink" title="Pooling layer 池化"></a>Pooling layer 池化</h2><p>卷积提取完特征后，一般需要进行池化，通过模拟人类的视觉系统对数据进行降维，用更高层次的特征表示图像。一般有以下特点：</p>
+<ul>
+<li>降低信息冗余</li>
+<li>提升模型的尺度不变性、旋转不变性，识别稳定性</li>
+<li>防止过拟合</li>
+</ul>
+<p><img src="/image/cnn/pooling.png" alt="pooling"></p>
+<h1 id="LeNet"><a href="#LeNet" class="headerlink" title="LeNet"></a>LeNet</h1><p>我们已经了解了卷积神经网络的所需组件，下面介绍介绍LeNet，它是最早发布的卷积神经网络之一，也是将以上所有的组件组合起来的的一个实现</p>
+<p><img src="/image/cnn/lenet.png" alt="lenet"></p>
+<p>图中的第一层卷积后，仍保持了28*28，这是由于做了Padding，通过将数据向外补零，来避免向内坍缩</p>
+<p><img src="/image/cnn/padding.png" alt="padding"></p>
+<p>当图片像素较大时，可通过调整步长来减少计算</p>
+<p><img src="/image/cnn/stride.png" alt="Stride"></p>
+<h1 id="Coding"><a href="#Coding" class="headerlink" title="Coding"></a>Coding</h1><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"><span class="keyword">import</span> torch.optim <span class="keyword">as</span> optim</span><br><span class="line"><span class="keyword">import</span> torchvision</span><br><span class="line"><span class="keyword">import</span> torchvision.transforms <span class="keyword">as</span> transforms</span><br><span class="line"><span class="keyword">from</span> torch.utils.data <span class="keyword">import</span> DataLoader</span><br><span class="line"></span><br><span class="line"><span class="comment"># Set random seed for reproducibility</span></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Define the LeNet architecture</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">LeNet</span><span class="params">(nn.Module)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></span><br><span class="line">        super(LeNet, self).__init__()</span><br><span class="line">        self.conv0 = nn.Conv2d(<span class="number">1</span>, <span class="number">6</span>, kernel_size=<span class="number">5</span>)</span><br><span class="line">        self.conv1 = nn.Conv2d(<span class="number">6</span>, <span class="number">16</span>, kernel_size=<span class="number">5</span>)</span><br><span class="line">        self.fc0 = nn.Linear(<span class="number">16</span> * <span class="number">4</span> * <span class="number">4</span>, <span class="number">120</span>)</span><br><span class="line">        self.fc1 = nn.Linear(<span class="number">120</span>, <span class="number">84</span>)</span><br><span class="line">        self.fc2 = nn.Linear(<span class="number">84</span>, <span class="number">10</span>)</span><br><span class="line">        self.relu = nn.ReLU()</span><br><span class="line">        self.maxpool = nn.MaxPool2d(kernel_size=<span class="number">2</span>, stride=<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">forward</span><span class="params">(self, x)</span>:</span></span><br><span class="line">        <span class="comment"># Single-Channel 1-6: First conv block</span></span><br><span class="line">        <span class="comment"># dimension: 28x28x1 -&gt; 24x24x6</span></span><br><span class="line">        x = self.relu(self.conv0(x))</span><br><span class="line">        <span class="comment"># dimension: 24x24x6 -&gt; 12x12x6</span></span><br><span class="line">        x = self.maxpool(x)</span><br><span class="line">        </span><br><span class="line">        <span class="comment"># Muti-Channel 6-16: Second conv block</span></span><br><span class="line">        <span class="comment"># dimension: 12x12x6 -&gt; 8x8x16</span></span><br><span class="line">        x = self.relu(self.conv1(x))</span><br><span class="line">        <span class="comment"># dimension: 8x8x16 -&gt; 4x4x16</span></span><br><span class="line">        x = self.maxpool(x)</span><br><span class="line">        </span><br><span class="line">        <span class="comment"># MLP: Flatten and fully connected layers</span></span><br><span class="line">        x = x.view(x.size(<span class="number">0</span>), <span class="number">-1</span>)</span><br><span class="line">        <span class="comment"># dimension: 16x4x4 -&gt; 120</span></span><br><span class="line">        x = self.relu(self.fc0(x))</span><br><span class="line">        <span class="comment"># dimension: 120 -&gt; 84</span></span><br><span class="line">        x = self.relu(self.fc1(x))</span><br><span class="line">        <span class="comment"># dimension: 84 -&gt; 10</span></span><br><span class="line">        x = self.fc2(x)</span><br><span class="line">        <span class="keyword">return</span> x</span><br><span class="line"></span><br><span class="line"><span class="comment"># Data loading and preprocessing</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">load_data</span><span class="params">(batch_size=<span class="number">64</span>)</span>:</span></span><br><span class="line">    transform = transforms.Compose([</span><br><span class="line">        transforms.ToTensor(),</span><br><span class="line">        transforms.Normalize((<span class="number">0.1307</span>,), (<span class="number">0.3081</span>,))</span><br><span class="line">    ])</span><br><span class="line">    </span><br><span class="line">    train_dataset = torchvision.datasets.MNIST(</span><br><span class="line">        root=<span class="string">'./data'</span>, </span><br><span class="line">        train=<span class="keyword">True</span>,</span><br><span class="line">        download=<span class="keyword">True</span>, </span><br><span class="line">        transform=transform</span><br><span class="line">    )</span><br><span class="line">    </span><br><span class="line">    test_dataset = torchvision.datasets.MNIST(</span><br><span class="line">        root=<span class="string">'./data'</span>, </span><br><span class="line">        train=<span class="keyword">False</span>,</span><br><span class="line">        download=<span class="keyword">True</span>, </span><br><span class="line">        transform=transform</span><br><span class="line">    )</span><br><span class="line">    </span><br><span class="line">    train_loader = DataLoader(</span><br><span class="line">        train_dataset, </span><br><span class="line">        batch_size=batch_size,</span><br><span class="line">        shuffle=<span class="keyword">True</span></span><br><span class="line">    )</span><br><span class="line">    </span><br><span class="line">    test_loader = DataLoader(</span><br><span class="line">        test_dataset, </span><br><span class="line">        batch_size=batch_size,</span><br><span class="line">        shuffle=<span class="keyword">False</span></span><br><span class="line">    )</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> train_loader, test_loader</span><br><span class="line"></span><br><span class="line"><span class="comment"># Training</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">train</span><span class="params">(model, train_loader, criterion, optimizer, device)</span>:</span></span><br><span class="line">    model.train()</span><br><span class="line">    running_loss = <span class="number">0.0</span></span><br><span class="line">    correct = <span class="number">0</span></span><br><span class="line">    total = <span class="number">0</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> images, labels <span class="keyword">in</span> train_loader:</span><br><span class="line">        images, labels = images.to(device), labels.to(device)</span><br><span class="line">        </span><br><span class="line">        <span class="comment"># Do Not Forget to Zero Gradients</span></span><br><span class="line">        optimizer.zero_grad()</span><br><span class="line">        outputs = model(images)</span><br><span class="line">        loss = criterion(outputs, labels)</span><br><span class="line">        loss.backward()</span><br><span class="line">        optimizer.step()</span><br><span class="line">        </span><br><span class="line">        running_loss += loss.item()</span><br><span class="line">        _, predicted = outputs.max(<span class="number">1</span>)</span><br><span class="line">        total += labels.size(<span class="number">0</span>)</span><br><span class="line">        correct += predicted.eq(labels).sum().item()</span><br><span class="line">    </span><br><span class="line">    accuracy = <span class="number">100.</span> * correct / total</span><br><span class="line">    <span class="keyword">return</span> running_loss / len(train_loader), accuracy</span><br><span class="line"></span><br><span class="line"><span class="comment"># Evaluation</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">evaluate</span><span class="params">(model, test_loader, criterion, device)</span>:</span></span><br><span class="line">    model.eval()</span><br><span class="line">    running_loss = <span class="number">0.0</span></span><br><span class="line">    correct = <span class="number">0</span></span><br><span class="line">    total = <span class="number">0</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">with</span> torch.no_grad():</span><br><span class="line">        <span class="keyword">for</span> images, labels <span class="keyword">in</span> test_loader:</span><br><span class="line">            images, labels = images.to(device), labels.to(device)</span><br><span class="line">            outputs = model(images)</span><br><span class="line">            loss = criterion(outputs, labels)</span><br><span class="line">            </span><br><span class="line">            running_loss += loss.item()</span><br><span class="line">            _, predicted = outputs.max(<span class="number">1</span>)</span><br><span class="line">            total += labels.size(<span class="number">0</span>)</span><br><span class="line">            correct += predicted.eq(labels).sum().item()</span><br><span class="line">    </span><br><span class="line">    accuracy = <span class="number">100.</span> * correct / total</span><br><span class="line">    <span class="keyword">return</span> running_loss / len(test_loader), accuracy</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="comment"># Set device</span></span><br><span class="line">    device = torch.device(<span class="string">'cuda'</span> <span class="keyword">if</span> torch.cuda.is_available() <span class="keyword">else</span> <span class="string">'cpu'</span>)</span><br><span class="line">    print(<span class="string">f'Using device: <span class="subst">&#123;device&#125;</span>'</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># Hyperparameters</span></span><br><span class="line">    batch_size = <span class="number">64</span></span><br><span class="line">    learning_rate = <span class="number">0.001</span></span><br><span class="line">    num_epochs = <span class="number">10</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment"># Load data</span></span><br><span class="line">    train_loader, test_loader = load_data(batch_size)</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># Initialize model, loss function, and optimizer</span></span><br><span class="line">    model = LeNet().to(device)</span><br><span class="line">    criterion = nn.CrossEntropyLoss()</span><br><span class="line">    optimizer = optim.Adam(model.parameters(), lr=learning_rate)</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># Training loop</span></span><br><span class="line">    print(<span class="string">'Starting training...'</span>)</span><br><span class="line">    <span class="keyword">for</span> epoch <span class="keyword">in</span> range(num_epochs):</span><br><span class="line">        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)</span><br><span class="line">        test_loss, test_acc = evaluate(model, test_loader, criterion, device)</span><br><span class="line">        </span><br><span class="line">        print(<span class="string">f'Epoch [<span class="subst">&#123;epoch+<span class="number">1</span>&#125;</span>/<span class="subst">&#123;num_epochs&#125;</span>]:'</span>)</span><br><span class="line">        print(<span class="string">f'Train Loss: <span class="subst">&#123;train_loss:<span class="number">.4</span>f&#125;</span>, Train Acc: <span class="subst">&#123;train_acc:<span class="number">.2</span>f&#125;</span>%'</span>)</span><br><span class="line">        print(<span class="string">f'Test Loss: <span class="subst">&#123;test_loss:<span class="number">.4</span>f&#125;</span>, Test Acc: <span class="subst">&#123;test_acc:<span class="number">.2</span>f&#125;</span>%'</span>)</span><br><span class="line">        print(<span class="string">'-'</span> * <span class="number">50</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># Save the trained model</span></span><br><span class="line">    torch.save(model.state_dict(), <span class="string">'lenet_mnist.pth'</span>)</span><br><span class="line">    print(<span class="string">'Training completed and model saved!'</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    main()</span><br></pre></td></tr></table></figure>
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/machine-learning/" rel="tag"># machine learning</a>
+          
+            <a href="/tags/python/" rel="tag"># python</a>
+          
+            <a href="/tags/CNN/" rel="tag"># CNN</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2025/01/20/DeepSeek/" rel="next" title="DeepSeek 论文浅析">
+                <i class="fa fa-chevron-left"></i> DeepSeek 论文浅析
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/v2-e386393694cb08152bb316fa79bba113_hd.jpg" alt="Akita Summer">
+            
+              <p class="site-author-name" itemprop="name">Akita Summer</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">28</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">42</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/akitaSummer" title="GitHub &rarr; https://github.com/akitaSummer" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:644171127@qq.com" title="E-Mail &rarr; mailto:644171127@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#CNN-的由来"><span class="nav-number">1.</span> <span class="nav-text">CNN 的由来</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MLP-有什么问题"><span class="nav-number">1.1.</span> <span class="nav-text">MLP 有什么问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#图片特点"><span class="nav-number">1.2.</span> <span class="nav-text">图片特点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#聚焦特点"><span class="nav-number">2.</span> <span class="nav-text">聚焦特点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Convolution-卷积"><span class="nav-number">2.1.</span> <span class="nav-text">Convolution 卷积</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pooling-layer-池化"><span class="nav-number">2.2.</span> <span class="nav-text">Pooling layer 池化</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#LeNet"><span class="nav-number">3.</span> <span class="nav-text">LeNet</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Coding"><span class="nav-number">4.</span> <span class="nav-text">Coding</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2025</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Akita Summer</span>
+
+  
+
+  
+</div>
+
+<!--
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.0.0</div>
+-->
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.0"></script>
+
+  <script src="/js/src/motion.js?v=7.0.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.0"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.0"></script>
+<script src="/js/src/post-details.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.0"></script>
+
+
+
+  
+
+
+  
+    <!-- LOCAL: You can save these files to your site and update links -->
+
+  
+  <script src="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/gitmint.browser.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/theme-next/theme-next-gitment@1/default.css">
+<!-- END LOCAL -->
+
+<style>
+#gitment-container a {
+  border-bottom: none;
+}
+
+</style>
+
+<script>
+  function renderGitment() {
+    var gitment = new Gitmint({
+      id: window.location.pathname,
+      owner: 'akitaSummer',
+      repo: 'blogComment',
+      
+        lang: '' || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+      
+      oauth: {
+      
+      
+        client_secret: '624f365dba9bccb32867a185a2cf65556335f06e',
+      
+        client_id: 'f433f680d31e0d644e2c'
+      }
+    });
+    gitment.render('gitment-container');
+  }
+
+  
+    renderGitment();
+  
+</script>
+
+  
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
